@@ -329,7 +329,12 @@
   .sw.pay { background: var(--pay); }
   .sw.hol { background: var(--hol); }
 
-  .cards.single { grid-template-columns: 1fr; }
+  /* Column widths live here rather than in an inline style, so the narrow
+     breakpoint below can actually override them. An inline style silently
+     won against the media query and left three columns crushed together. */
+  .cards[data-n="1"] { grid-template-columns: 1fr; }
+  .cards[data-n="2"] { grid-template-columns: 1fr 330px; }
+  .cards[data-n="3"] { grid-template-columns: 1fr 1.25fr 330px; }
 
   .card ul { list-style: none; overflow: hidden; min-height: 0; }
 
@@ -371,9 +376,22 @@
 
   .stale { color: var(--accent); }
 
+  /* Below the breakpoint the cards stack, and three of them no longer fit a
+     viewport. The no-scroll lock is right for the full-size ambient display
+     but here it just clipped the calendar off the bottom with no way to reach
+     it, so narrow windows scroll and the cards take their natural height. */
   @media (max-width: 1068px) {
     :root { --pad-x: 48px; }
-    .cards { grid-template-columns: 1fr; }
+
+    html, body { height: auto; overflow: auto; }
+    body { display: block; }
+
+    .cards[data-n] {
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+    }
+
+    .card ul { overflow: visible; }
   }
 </style>
 </head>
@@ -446,7 +464,7 @@
   // back — Open-Meteo returns the resolved zone alongside the forecast, so
   // this costs no extra request.
   var clockTZ = (DATA && DATA.tz) || undefined;
-  var timeFmt, dateFmt;
+  var timeFmt, dateFmt, dayFmt;
 
   function buildFormatters() {
     timeFmt = new Intl.DateTimeFormat("en-GB", {
@@ -455,13 +473,25 @@
     dateFmt = new Intl.DateTimeFormat("en-GB", {
       weekday: "long", day: "numeric", month: "long", timeZone: clockTZ
     });
+    // Cached rather than built per call: todayParts() runs once a second.
+    dayFmt = new Intl.DateTimeFormat("en-US", {
+      year: "numeric", month: "2-digit", day: "2-digit", timeZone: clockTZ
+    });
   }
   buildFormatters();
+
+  // Tracks the rendered day so the calendar rolls over at midnight instead of
+  // waiting for the next reload to notice.
+  var shownDay = null;
 
   function tick() {
     var now = new Date();
     $("time").textContent = timeFmt.format(now);
     $("date").textContent = dateFmt.format(now);
+
+    var key = todayParts().key;
+    if (shownDay !== null && key !== shownDay) renderCalendar();
+    shownDay = key;
   }
   tick();
   setInterval(tick, 1000);
@@ -535,10 +565,14 @@
     95: "Thunderstorm", 96: "Thunderstorm, hail", 99: "Thunderstorm, hail"
   };
 
-  function applyNight(sunrise, sunset) {
-    if (!sunrise || !sunset) return;
-    var now = new Date();
-    var isNight = now < new Date(sunrise) || now >= new Date(sunset);
+  // Open-Meteo returns sunrise/sunset as naive strings in the *location's*
+  // zone ("2026-07-27T20:10"), and `new Date()` on those parses them in the
+  // viewer's zone. Comparing a real instant against them put the page in dark
+  // mode at 7pm Los Angeles time for a viewer in New York — broad daylight.
+  // current.time is naive in the same zone, so compare the strings directly.
+  function applyNight(nowLocal, sunrise, sunset) {
+    if (!nowLocal || !sunrise || !sunset) return;
+    var isNight = nowLocal < sunrise || nowLocal >= sunset;
     document.documentElement.classList.toggle("night", isNight);
   }
 
@@ -696,14 +730,22 @@
                 "July","August","September","October","November","December"];
   var DOW = ["Su","M","Tu","W","Th","F","Sa"];
 
+  // "Today" in the dashboard's current zone, so the highlight follows the ZIP
+  // rather than the machine rendering the page. Uses formatToParts rather than
+  // splitting a formatted string — relying on a locale to emit exactly
+  // "YYYY-MM-DD" is an assumption about locale data, not a guarantee.
+  function todayParts() {
+    var p = dayFmt.formatToParts(new Date());
+    var o = {};
+    p.forEach(function (x) { if (x.type !== "literal") o[x.type] = x.value; });
+    return { y: +o.year, m: +o.month - 1, d: +o.day,
+             key: o.year + "-" + o.month + "-" + o.day };
+  }
+
   function renderCalendar() {
-    // "Today" is read in the dashboard's current zone, so the highlight moves
-    // with the ZIP rather than with the machine rendering the page.
-    var parts = new Intl.DateTimeFormat("en-CA", {
-      year: "numeric", month: "2-digit", day: "2-digit", timeZone: clockTZ
-    }).format(new Date()).split("-");
-    var Y = +parts[0], M = +parts[1] - 1, D = +parts[2];
-    var todayKey = parts.join("-");
+    var tp = todayParts();
+    var Y = tp.y, M = tp.m, D = tp.d;
+    var todayKey = tp.key;
 
     var hol = holidaysFor(Y);
     var grid = $("cal");
@@ -749,7 +791,8 @@
 
     var nextHolT = null, nextHolName = "";
     var horizon = holidaysFor(Y);
-    Object.keys(holidaysFor(Y + 1)).forEach(function (k) { horizon[k] = holidaysFor(Y + 1)[k]; });
+    var nextYear = holidaysFor(Y + 1);   // carries the search past 31 December
+    Object.keys(nextYear).forEach(function (k) { horizon[k] = nextYear[k]; });
     Object.keys(horizon).sort().forEach(function (k) {
       if (nextHolT !== null) return;
       var p = k.split("-");
@@ -951,7 +994,7 @@
         $("wx-range").textContent =
           "H " + Math.round(d.daily.temperature_2m_max[0]) + "°   " +
           "L " + Math.round(d.daily.temperature_2m_min[0]) + "°";
-        applyNight(d.daily.sunrise[0], d.daily.sunset[0]);
+        applyNight(d.current.time, d.daily.sunrise[0], d.daily.sunset[0]);
         setClockZone(d.timezone);
         renderForecast(d);
       })
@@ -960,13 +1003,11 @@
         $("wx-cond").textContent = "Weather unavailable";
       });
   }
-  // The calendar is a fixed 7-column grid, so it gets a set width and the
-  // list cards absorb whatever is left.
+  // Publishes the card count to CSS. Widths themselves stay in the stylesheet
+  // so the narrow breakpoint can override them.
   function layoutCards() {
     var host = document.querySelector(".cards");
-    var n = host.querySelectorAll(".card").length;
-    host.style.gridTemplateColumns =
-      n >= 3 ? "1fr 1.25fr 330px" : n === 2 ? "1fr 330px" : "1fr";
+    host.setAttribute("data-n", Math.min(host.querySelectorAll(".card").length, 3));
   }
 
   layoutCards();
