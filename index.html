@@ -137,7 +137,7 @@
     font-size: 14px;
     letter-spacing: -0.224px;
     color: var(--ink-muted);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .hr-t {
@@ -145,6 +145,75 @@
     font-weight: 600;
     letter-spacing: 0.231px;
     font-variant-numeric: tabular-nums;
+  }
+
+  .hr-f {
+    font-size: 12px;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hr-b {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hr-b .wind-ar { display: inline-block; }
+  .hr-b .sep { opacity: 0.45; }
+
+  /* ---- Animated weather icons ---- */
+  .ic { width: 42px; height: 42px; display: block; margin: 0 auto; }
+
+  :root {
+    --i-sun:   #f5a623;
+    --i-cloud: #9aa0a6;
+    --i-rain:  #2b7fd4;
+    --i-snow:  #7fc4e8;
+    --i-bolt:  #f0b429;
+  }
+
+  html.night {
+    --i-sun:   #ffcf5c;
+    --i-cloud: #b8bec7;
+    --i-rain:  #52a8ff;
+    --i-snow:  #a9dcf5;
+    --i-bolt:  #ffd60a;
+  }
+
+  @keyframes spin      { to { transform: rotate(360deg); } }
+  @keyframes drift     { 0%,100% { transform: translateX(-1.2px); } 50% { transform: translateX(1.2px); } }
+  @keyframes fall      { 0% { transform: translateY(-5px); opacity: 0; }
+                         25% { opacity: 1; }
+                         100% { transform: translateY(7px); opacity: 0; } }
+  @keyframes flakefall { 0% { transform: translateY(-4px); opacity: 0; }
+                         30% { opacity: 1; }
+                         100% { transform: translateY(8px); opacity: 0; } }
+  @keyframes flash     { 0%,72%,100% { opacity: .25; } 78%,86% { opacity: 1; } }
+  @keyframes slide     { 0%,100% { transform: translateX(-2.5px); } 50% { transform: translateX(2.5px); } }
+
+  .ic .rays  { transform-origin: 20px 20px; animation: spin 14s linear infinite; }
+  .ic .cloud { transform-origin: 50% 50%; animation: drift 7s ease-in-out infinite; }
+  .ic .drop  { animation: fall 1.5s linear infinite; }
+  .ic .flake { animation: flakefall 2.6s linear infinite; }
+  .ic .bolt  { animation: flash 3.2s ease-in-out infinite; }
+  .ic .haze  { animation: slide 6s ease-in-out infinite; }
+
+  .ic .d2, .ic .f2 { animation-delay: .5s; }
+  .ic .d3, .ic .f3 { animation-delay: 1s; }
+  .ic .h2 { animation-delay: .9s; }
+
+  /* An ambient display runs all day; honour a viewer who has asked for calm. */
+  @media (prefers-reduced-motion: reduce) {
+    .ic * { animation: none !important; }
   }
 
   /* Rain chance escalates by contrast, then by the single accent — no second
@@ -588,6 +657,88 @@
     return v + (h >= 12 ? "p" : "a");
   }
 
+  // ---- animated weather icons ----
+  // Inline SVG rather than an icon font or sprite sheet: the page has no build
+  // step and no external requests, and the parts have to be individually
+  // animatable (drops stagger, rays spin, the bolt flashes).
+  var SUN = '<g class="rays" stroke="var(--i-sun)" stroke-width="2.2" stroke-linecap="round">' +
+            '<line x1="20" y1="3" x2="20" y2="8"/><line x1="20" y1="32" x2="20" y2="37"/>' +
+            '<line x1="3" y1="20" x2="8" y2="20"/><line x1="32" y1="20" x2="37" y2="20"/>' +
+            '<line x1="8" y1="8" x2="11.5" y2="11.5"/><line x1="28.5" y1="28.5" x2="32" y2="32"/>' +
+            '<line x1="8" y1="32" x2="11.5" y2="28.5"/><line x1="28.5" y1="11.5" x2="32" y2="8"/></g>';
+
+  function cloudShape(cls, y) {
+    return '<g class="cloud ' + cls + '" fill="var(--i-cloud)">' +
+           '<circle cx="14" cy="' + (y + 3) + '" r="6.5"/>' +
+           '<circle cx="23" cy="' + (y + 1) + '" r="8.5"/>' +
+           '<rect x="11" y="' + (y + 3) + '" width="18.5" height="7.5" rx="3.75"/></g>';
+  }
+
+  function drops(n) {
+    var s = '<g stroke="var(--i-rain)" stroke-width="2.4" stroke-linecap="round">';
+    for (var i = 0; i < n; i++) {
+      var x = 15 + i * 6;
+      s += '<line class="drop d' + (i + 1) + '" x1="' + x + '" y1="29" x2="' + (x - 1.5) + '" y2="34"/>';
+    }
+    return s + '</g>';
+  }
+
+  function flakes(n) {
+    var s = '<g fill="var(--i-snow)">';
+    for (var i = 0; i < n; i++) {
+      s += '<circle class="flake f' + (i + 1) + '" cx="' + (15 + i * 6) + '" cy="31" r="1.9"/>';
+    }
+    return s + '</g>';
+  }
+
+  function svg(inner) {
+    return '<svg class="ic" viewBox="0 0 40 40" aria-hidden="true">' + inner + '</svg>';
+  }
+
+  function weatherIcon(code) {
+    if (code === 0 || code === 1) {
+      return svg(SUN + '<circle cx="20" cy="20" r="7.5" fill="var(--i-sun)"/>');
+    }
+    if (code === 2) {                       // partly cloudy: sun peeking out
+      return svg('<g class="rays" stroke="var(--i-sun)" stroke-width="2" stroke-linecap="round">' +
+                 '<line x1="26" y1="3" x2="26" y2="7"/><line x1="36" y1="13" x2="32" y2="13"/>' +
+                 '<line x1="33" y1="6" x2="30" y2="9"/></g>' +
+                 '<circle cx="26" cy="13" r="5.5" fill="var(--i-sun)"/>' + cloudShape("", 18));
+    }
+    if (code === 3) return svg(cloudShape("", 15));
+    if (code === 45 || code === 48) {       // fog
+      return svg(cloudShape("", 12) +
+                 '<g stroke="var(--i-cloud)" stroke-width="2.2" stroke-linecap="round">' +
+                 '<line class="haze" x1="10" y1="30" x2="30" y2="30"/>' +
+                 '<line class="haze h2" x1="13" y1="35" x2="27" y2="35"/></g>');
+    }
+    if (code >= 95) {                       // thunderstorm
+      // Every point must sit inside the 0 0 40 40 viewBox — an earlier version
+      // ran to y=44 and the tail of the bolt was silently clipped away.
+      return svg(cloudShape("", 12) +
+                 '<polygon class="bolt" points="23,23 16,33.5 20.5,33.5 18,38.5 26,28.5 21.5,28.5 24.5,23" ' +
+                 'fill="var(--i-bolt)"/>');
+    }
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) {
+      return svg(cloudShape("", 12) + flakes(3));
+    }
+    if (code >= 51) {                       // drizzle, rain, showers
+      var heavy = (code === 65 || code === 67 || code === 82);
+      return svg(cloudShape("", 12) + drops(heavy ? 4 : 3));
+    }
+    return svg(cloudShape("", 15));
+  }
+
+  // Meteorological direction is where the wind comes FROM; the arrow shows
+  // where it is going, so it points 180° round.
+  function windArrow(deg) {
+    return '<span class="wind-ar" style="transform:rotate(' + ((deg + 180) % 360) + 'deg)">↑</span>';
+  }
+
+  var DROP_SVG = '<svg width="9" height="11" viewBox="0 0 9 11" aria-hidden="true" style="flex:none">' +
+                 '<path d="M4.5 0C4.5 0 0 5.2 0 7.2a4.5 4.5 0 0 0 9 0C9 5.2 4.5 0 4.5 0z" ' +
+                 'fill="var(--i-rain)"/></svg>';
+
   function renderForecast(d) {
     var H = d.hourly, times = H.time;
     // current.time is already in the location's timezone, so no conversion.
@@ -610,7 +761,15 @@
       if (times[j].slice(0, 10) !== target) continue;
       var hr = parseInt(times[j].slice(11, 13), 10);
       if (hr < WIN_START || hr > WIN_END) continue;
-      rows.push({ hour: hr, temp: H.temperature_2m[j], prob: H.precipitation_probability[j] });
+      rows.push({
+        hour: hr,
+        temp:  H.temperature_2m[j],
+        feels: H.apparent_temperature ? H.apparent_temperature[j] : null,
+        prob:  H.precipitation_probability[j],
+        code:  H.weather_code ? H.weather_code[j] : 3,
+        wind:  H.wind_speed_10m ? H.wind_speed_10m[j] : null,
+        dir:   H.wind_direction_10m ? H.wind_direction_10m[j] : 0
+      });
     }
     if (!rows.length) return;
 
@@ -622,21 +781,27 @@
       var cell = document.createElement("div");
       cell.className = "hr" + (isToday && r.hour < nowHour ? " past" : "");
 
-      var h = document.createElement("div");
-      h.className = "hr-h";
-      h.textContent = hourLabel(r.hour);
+      var rainCls = r.prob >= RAIN_HIGH ? " high" : r.prob >= RAIN_MID ? " mid" : "";
+      var html =
+        '<div class="hr-h">' + hourLabel(r.hour) + '</div>' +
+        weatherIcon(r.code) +
+        '<div class="hr-t">' + Math.round(r.temp) + '°</div>';
 
-      var t = document.createElement("div");
-      t.className = "hr-t";
-      t.textContent = Math.round(r.temp) + "°";
+      if (r.feels !== null && Math.round(r.feels) !== Math.round(r.temp)) {
+        html += '<div class="hr-f">Feels ' + Math.round(r.feels) + '°</div>';
+      } else {
+        html += '<div class="hr-f">&nbsp;</div>';
+      }
 
-      var p = document.createElement("div");
-      p.className = "hr-r" + (r.prob >= RAIN_HIGH ? " high" : r.prob >= RAIN_MID ? " mid" : "");
-      p.textContent = r.prob + "%";
+      html += '<div class="hr-b">' + DROP_SVG +
+              '<span class="hr-r' + rainCls + '">' + r.prob + '%</span>';
+      if (r.wind !== null) {
+        html += '<span class="sep">·</span>' + windArrow(r.dir) +
+                '<span>' + Math.round(r.wind) + '</span>';
+      }
+      html += '</div>';
 
-      cell.appendChild(h);
-      cell.appendChild(t);
-      cell.appendChild(p);
+      cell.innerHTML = html;
       host.appendChild(cell);
     });
 
@@ -981,9 +1146,10 @@
       + "?latitude=" + encodeURIComponent(loc.lat)
       + "&longitude=" + encodeURIComponent(loc.lon)
       + "&current=temperature_2m,weather_code"
-      + "&hourly=temperature_2m,precipitation_probability"
+      + "&hourly=temperature_2m,apparent_temperature,precipitation_probability,"
+      +   "weather_code,wind_speed_10m,wind_direction_10m"
       + "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset"
-      + "&temperature_unit=fahrenheit"
+      + "&temperature_unit=fahrenheit&wind_speed_unit=mph"
       + "&timezone=auto&forecast_days=2";
 
     fetch(url)

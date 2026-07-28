@@ -71,6 +71,22 @@ midnight.
 A payday landing on a holiday happens twice a year (27 Nov and 25 Dec in 2026).
 Those days take the green fill plus a yellow dot, so neither fact is lost.
 
+## Hourly icons
+
+Each hour carries an animated SVG icon: the sun's rays turn, clouds drift, rain
+and snow fall on staggered delays, fog bands slide, the storm bolt flashes.
+Inline SVG rather than an icon font or sprite sheet — the page has no build step
+and makes no external requests, and the parts have to animate independently.
+
+Animation is disabled under `prefers-reduced-motion`. This thing runs all day
+in the corner of a screen; a viewer who has asked for calm should get it.
+
+The droplet shows **precipitation probability, not humidity**. The reference
+layout this follows used humidity, but the whole point of the strip is deciding
+whether to play outside, and the chance of rain answers that where humidity does
+not. Feels-like is included because it diverges sharply from the actual
+temperature in Georgia — 88° reading as 97° is the number that matters.
+
 ## The rain strip
 
 Hourly rain probability from noon to 9pm, in Fahrenheit, with a one-line
