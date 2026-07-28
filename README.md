@@ -1,7 +1,24 @@
 # Dashboard
 
-A glanceable ambient dashboard — clock, date, weather and news headlines.
-Live at <https://spooky3505.github.io/dashboard>.
+A glanceable ambient dashboard — clock, date, weather, an afternoon rain
+forecast and news headlines. Live at <https://spooky3505.github.io/dashboard>.
+
+## The rain strip
+
+Hourly rain probability from noon to 9pm, in Fahrenheit, with a one-line
+verdict above it. The verdict deliberately judges **only the hours from 4pm
+onward**, not the whole displayed window — it exists to answer "is outdoor play
+on tonight", and judging the full window produced readings that were true but
+useless (a wet morning with a clear evening reported as "rain possible all
+afternoon"; a 70%-rain evening reported as "dry until 1p").
+
+Probabilities escalate by contrast, then by the single accent colour: muted
+below 25%, full-contrast bold to 50%, accent above. No second hue is
+introduced — nothing on the page is clickable, so the accent is free to carry
+emphasis instead of interactivity.
+
+Once 9pm passes the strip rolls forward to tomorrow rather than showing a row
+of dead hours.
 
 Published build of the local dashboard in the parent folder. The difference is
 deliberate: **this one ships no `todos.txt`**, so the page drops the todos card
