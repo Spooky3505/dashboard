@@ -51,6 +51,26 @@ build-time feed from `data.js` stays on screen and the card heading drops its
 place name — so the card is never blank, but the news is not local at that
 moment.
 
+## Calendar
+
+Current month, with today ringed in the accent colour, paydays green and
+company holidays yellow, plus a countdown to the next of each.
+
+Neither set is a hardcoded list of dates. **Paydays** are derived from a 14-day
+chain anchored on a known payday (9 Jan 2026); **holidays** are derived from
+their rules — third Monday of January, last Monday of May, fourth Thursday of
+November and so on, with 4 July sliding to the nearest weekday. Both were
+checked against the source calendar for 2026 and reproduce it exactly: 26
+paydays and 10 holidays, none missing, none extra. Rules rather than lists means
+the card keeps working next year instead of going blank on 1 January.
+
+Today is resolved in the dashboard's current timezone, so the highlight follows
+the ZIP rather than the machine rendering the page — it matters either side of
+midnight.
+
+A payday landing on a holiday happens twice a year (27 Nov and 25 Dec in 2026).
+Those days take the green fill plus a yellow dot, so neither fact is lost.
+
 ## The rain strip
 
 Hourly rain probability from noon to 9pm, in Fahrenheit, with a one-line

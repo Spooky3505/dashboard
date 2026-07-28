@@ -16,6 +16,14 @@
 
     --font: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
     --pad-x: 80px;
+
+    /* Payday green / holiday yellow carry meaning from the source calendar's
+       own legend, so they stay — but muted well below the original's
+       saturation, which would shout on a display you sit next to all day. */
+    --pay: #b7ddb0;
+    --pay-ink: #1c3d17;
+    --hol: #ffe9a3;
+    --hol-ink: #4a3a00;
   }
 
   /* Dark tiles — used after sunset. Same system, alternate surface. */
@@ -27,6 +35,11 @@
     --ink:           #ffffff;
     --ink-muted:     #cccccc;
     --accent:        #2997ff;
+
+    --pay: #2f5c2a;
+    --pay-ink: #cdeec7;
+    --hol: #6b5405;
+    --hol-ink: #ffe9a3;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -229,6 +242,93 @@
   .scope { font-weight: 400; opacity: 0.7; }
   .scope:not(:empty)::before { content: "· "; }
 
+  /* ---- Calendar ---- */
+  .cal {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+
+  .cal-dow {
+    font-size: 12px;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted);
+    text-align: center;
+    padding-bottom: 6px;
+  }
+
+  .cal-d {
+    position: relative;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cal-d.pad { visibility: hidden; }
+  .cal-d.pay { background: var(--pay); color: var(--pay-ink); font-weight: 600; }
+  .cal-d.hol { background: var(--hol); color: var(--hol-ink); font-weight: 600; }
+
+  /* Payday landing on a holiday happens twice a year. Green fill wins and the
+     holiday adds a dot, so neither fact is lost. Needs the three-class
+     selector: .hol alone would otherwise beat .pay on source order and the
+     yellow dot would sit invisibly on a yellow cell. */
+  .cal-d.pay.hol { background: var(--pay); color: var(--pay-ink); }
+
+  .cal-d.pay.hol::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 3px;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--hol);
+  }
+
+  /* Outline rather than a fill, so today reads as today without erasing
+     whatever else that day is. */
+  .cal-d.today {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    font-weight: 600;
+  }
+
+  .cal-next {
+    margin-top: 14px;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    line-height: 1.5;
+  }
+
+  .cal-next b { font-weight: 600; }
+  .cal-next .muted { color: var(--ink-muted); }
+
+  .cal-key {
+    display: flex;
+    gap: 14px;
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 12px;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted);
+  }
+
+  .cal-key span { display: flex; align-items: center; gap: 5px; }
+
+  .sw {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .sw.pay { background: var(--pay); }
+  .sw.hol { background: var(--hol); }
+
   .cards.single { grid-template-columns: 1fr; }
 
   .card ul { list-style: none; overflow: hidden; min-height: 0; }
@@ -311,6 +411,15 @@
       <h2>News <span class="scope" id="news-scope"></span></h2>
       <ul id="news"><li class="empty">run refresh.sh</li></ul>
     </section>
+    <section class="card" id="cal-card">
+      <h2>Calendar <span class="scope" id="cal-month"></span></h2>
+      <div class="cal" id="cal"></div>
+      <div class="cal-next" id="cal-next"></div>
+      <div class="cal-key">
+        <span><i class="sw pay"></i>Payday</span>
+        <span><i class="sw hol"></i>Holiday</span>
+      </div>
+    </section>
     <div class="foot">
       <span id="gen">no data.js</span>
       <span id="err"></span>
@@ -363,6 +472,7 @@
     buildFormatters();
     tick();
     renderGen();
+    renderCalendar();   // "today" is zone-dependent near midnight
   }
 
   // "Updated" reflects when data.js was written, shown in the clock's zone —
@@ -395,7 +505,6 @@
     if (!DATA.todos || !DATA.todos.length) {
       var tc = $("todos-card");
       if (tc) tc.remove();
-      document.querySelector(".cards").classList.add("single");
     } else {
       fill($("todos"), DATA.todos, function (li, t) {
         li.textContent = t;
@@ -526,6 +635,145 @@
 
     $("verdict").textContent = (isToday ? "" : "Tomorrow: ") + msg;
     $("forecast").hidden = false;
+  }
+
+  // ---- calendar: paydays and company holidays ----
+  // Paydays are every other Friday. Anchored on a known one and derived by
+  // arithmetic rather than a hardcoded list, so the schedule keeps working
+  // past this year instead of silently going blank on 1 January.
+  var PAY_ANCHOR = Date.UTC(2026, 0, 9);
+  var DAY_MS = 86400000;
+
+  function ymd(t) {
+    var d = new Date(t);
+    return d.getUTCFullYear() + "-" +
+           String(d.getUTCMonth() + 1).padStart(2, "0") + "-" +
+           String(d.getUTCDate()).padStart(2, "0");
+  }
+
+  function isPayday(t) {
+    var diff = Math.round((t - PAY_ANCHOR) / DAY_MS);
+    return ((diff % 14) + 14) % 14 === 0;
+  }
+
+  function nthWeekday(y, month, weekday, n) {
+    var first = new Date(Date.UTC(y, month, 1));
+    var shift = (weekday - first.getUTCDay() + 7) % 7;
+    return Date.UTC(y, month, 1 + shift + (n - 1) * 7);
+  }
+
+  function lastWeekday(y, month, weekday) {
+    var last = new Date(Date.UTC(y, month + 1, 0));
+    var shift = (last.getUTCDay() - weekday + 7) % 7;
+    return Date.UTC(y, month + 1, 0 - shift);
+  }
+
+  // Derived from rules, not a fixed list — same reason as the paydays.
+  function holidaysFor(y) {
+    var h = {};
+    h[ymd(Date.UTC(y, 0, 1))] = "New Year's Day";
+    h[ymd(nthWeekday(y, 0, 1, 3))] = "MLK Day";
+    h[ymd(lastWeekday(y, 4, 1))] = "Memorial Day";
+
+    // 4 July slides to the nearest weekday when it lands on one.
+    var jul4 = new Date(Date.UTC(y, 6, 4));
+    var obs = Date.UTC(y, 6, 4);
+    if (jul4.getUTCDay() === 6) obs = Date.UTC(y, 6, 3);
+    if (jul4.getUTCDay() === 0) obs = Date.UTC(y, 6, 5);
+    h[ymd(obs)] = "Independence Day";
+
+    h[ymd(nthWeekday(y, 8, 1, 1))] = "Labor Day";
+    var tg = nthWeekday(y, 10, 4, 4);
+    h[ymd(tg)] = "Thanksgiving";
+    h[ymd(tg + DAY_MS)] = "Day after Thanksgiving";
+    h[ymd(Date.UTC(y, 11, 24))] = "Christmas Eve";
+    h[ymd(Date.UTC(y, 11, 25))] = "Christmas Day";
+    h[ymd(Date.UTC(y, 11, 31))] = "New Year's Eve";
+    return h;
+  }
+
+  var MONTHS = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+  var DOW = ["Su","M","Tu","W","Th","F","Sa"];
+
+  function renderCalendar() {
+    // "Today" is read in the dashboard's current zone, so the highlight moves
+    // with the ZIP rather than with the machine rendering the page.
+    var parts = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric", month: "2-digit", day: "2-digit", timeZone: clockTZ
+    }).format(new Date()).split("-");
+    var Y = +parts[0], M = +parts[1] - 1, D = +parts[2];
+    var todayKey = parts.join("-");
+
+    var hol = holidaysFor(Y);
+    var grid = $("cal");
+    grid.innerHTML = "";
+
+    DOW.forEach(function (d) {
+      var el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    var firstDow = new Date(Date.UTC(Y, M, 1)).getUTCDay();
+    var daysIn = new Date(Date.UTC(Y, M + 1, 0)).getUTCDate();
+
+    for (var i = 0; i < firstDow; i++) {
+      var pad = document.createElement("div");
+      pad.className = "cal-d pad";
+      pad.textContent = "0";
+      grid.appendChild(pad);
+    }
+
+    for (var day = 1; day <= daysIn; day++) {
+      var t = Date.UTC(Y, M, day);
+      var key = ymd(t);
+      var cell = document.createElement("div");
+      var cls = "cal-d";
+      if (isPayday(t)) cls += " pay";
+      if (hol[key]) cls += " hol";
+      if (key === todayKey) cls += " today";
+      cell.className = cls;
+      cell.textContent = day;
+      if (hol[key]) cell.title = hol[key];
+      grid.appendChild(cell);
+    }
+
+    $("cal-month").textContent = MONTHS[M] + " " + Y;
+
+    // Next payday and next holiday, counted from today inclusive.
+    var todayT = Date.UTC(Y, M, D);
+    var nextPay = todayT;
+    while (!isPayday(nextPay)) nextPay += DAY_MS;
+
+    var nextHolT = null, nextHolName = "";
+    var horizon = holidaysFor(Y);
+    Object.keys(holidaysFor(Y + 1)).forEach(function (k) { horizon[k] = holidaysFor(Y + 1)[k]; });
+    Object.keys(horizon).sort().forEach(function (k) {
+      if (nextHolT !== null) return;
+      var p = k.split("-");
+      var t2 = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+      if (t2 >= todayT) { nextHolT = t2; nextHolName = horizon[k]; }
+    });
+
+    function fmt(t) {
+      return new Intl.DateTimeFormat("en-GB", {
+        weekday: "short", day: "numeric", month: "short", timeZone: "UTC"
+      }).format(new Date(t));
+    }
+    function inDays(t) {
+      var n = Math.round((t - todayT) / DAY_MS);
+      return n === 0 ? "today" : n === 1 ? "tomorrow" : "in " + n + " days";
+    }
+
+    var out = "<div><b>Payday</b> " + fmt(nextPay) +
+              " <span class=\"muted\">" + inDays(nextPay) + "</span></div>";
+    if (nextHolT !== null) {
+      out += "<div><b>" + nextHolName + "</b> " + fmt(nextHolT) +
+             " <span class=\"muted\">" + inDays(nextHolT) + "</span></div>";
+    }
+    $("cal-next").innerHTML = out;
   }
 
   // ---- news ----
@@ -712,6 +960,17 @@
         $("wx-cond").textContent = "Weather unavailable";
       });
   }
+  // The calendar is a fixed 7-column grid, so it gets a set width and the
+  // list cards absorb whatever is left.
+  function layoutCards() {
+    var host = document.querySelector(".cards");
+    var n = host.querySelectorAll(".card").length;
+    host.style.gridTemplateColumns =
+      n >= 3 ? "1fr 1.25fr 330px" : n === 2 ? "1fr 330px" : "1fr";
+  }
+
+  layoutCards();
+  renderCalendar();
   renderPlace();
   weather();
   refreshNews();
