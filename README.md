@@ -56,6 +56,25 @@ moment.
 Current month, with today ringed in the accent colour, paydays green and
 company holidays yellow, plus a countdown to the next of each.
 
+**Months can be browsed** with the arrows in the heading, but the default view
+is always the current month — it resets on every open and reload. A "Today"
+button appears only once you have navigated away, so the way back is offered
+exactly when it is needed.
+
+Browsing pauses the snap-back. The page reloads itself every five minutes, and
+that reload would otherwise yank the view back to this month while someone was
+still reading another one. While the calendar is off its default the reload
+defers and asks again; two minutes after the last click the view restores
+itself and the reload proceeds. It defers, it never blocks.
+
+**Clicking a payday or a holiday** names it — "Independence Day, Fri 3 Jul, 25
+days ago". Clicking it again closes it. The detail line's space is reserved
+whether or not anything is selected: on a layout this height-constrained, a
+line appearing from nowhere would push the legend off the bottom of the card.
+
+Relative dates are phrased in both directions, since months can now be browsed
+backwards and "in -5 days" is what the naive version produced.
+
 Neither set is a hardcoded list of dates. **Paydays** are derived from a 14-day
 chain anchored on a known payday (9 Jan 2026); **holidays** are derived from
 their rules — third Monday of January, last Monday of May, fourth Thursday of
@@ -122,6 +141,14 @@ monogram in place. Some domains do return a generic globe icon instead of a
 The tile colour is derived from the publisher's name, so a given source keeps
 the same colour between reloads instead of flickering to a new one every five
 minutes.
+
+**Headlines open the article** in a new tab, and the whole row is the target,
+not just the words — on a display you walk up to, that matters more than it
+would in a desktop app. Links carry `rel="noopener noreferrer"` so the opened
+page gets no handle back to this one, and only `http(s)` URLs are accepted: the
+feed is third-party text, and a `javascript:` URL in a headline's link would
+otherwise become a click target on the page. Headlines with no link stay plain
+text rather than becoming a dead link that looks clickable.
 
 ## Fitting on the screen
 

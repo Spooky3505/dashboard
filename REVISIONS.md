@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 9 | 2026-07-28 | tag `rev9` | Partly-cloudy icon fix, browsable calendar months with holiday names on click, clickable headlines, more transparent photo-mode panels |
 | 8 | 2026-07-28 | tag `rev8` | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |
 | 7 | 2026-07-27 | `411894d` | Animated colour weather icons on the hourly strip |
 | 6 | 2026-07-27 | `9635b00` | Fixed five bugs found in review (timezone-correct night mode, responsive breakpoint, locale assumption, midnight rollover) |

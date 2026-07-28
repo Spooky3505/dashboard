@@ -46,21 +46,29 @@
      .night) and only re-points the surfaces: the background is the NASA image,
      so every panel has to become translucent or it would simply cover it. */
   html.photo {
-    --canvas:    rgba(0,0,0,0.30);
+    /* Fully transparent, not merely tinted: the hero band is the largest
+       uninterrupted area of the page and any wash over it flattens the
+       picture where it is most visible. The scrim gradient and the text
+       shadow together carry legibility here — nothing else needs to. */
+    --canvas:    transparent;
     --parchment: transparent;
-    --card:      rgba(20,20,22,0.52);
-    --hairline:  rgba(255,255,255,0.14);
+    --card:      rgba(18,18,20,0.26);
+    --hairline:  rgba(255,255,255,0.16);
   }
 
   html.photo body { background: transparent; }
 
-  /* Text over an astrophotograph needs its own contrast floor — the scrim
-     below handles the bulk, this catches the bright patches. */
+  /* Text over an astrophotograph needs its own contrast floor. With the cards
+     this transparent the scrim alone is not enough — the shadow is doing real
+     work here, not decoration, and it is what lets the panels stay this light
+     without the type breaking up over a bright patch of sky. */
   html.photo .hero, html.photo .card, html.photo .foot {
-    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.55);
   }
 
-  html.photo .card { backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  /* The blur is what keeps the panels readable as the picture changes daily:
+     it flattens whatever detail is behind them without darkening it. */
+  html.photo .card { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
   #bg {
     position: fixed;
@@ -290,7 +298,12 @@
   @keyframes flash     { 0%,72%,100% { opacity: .25; } 78%,86% { opacity: 1; } }
   @keyframes slide     { 0%,100% { transform: translateX(-2.5px); } 50% { transform: translateX(2.5px); } }
 
+  /* The origin has to be the centre of the sun the rays belong to, not the
+     centre of the tile. On the partly-cloudy icon the sun sits up at 26,13,
+     and spinning its rays about 20,20 swung them bodily around the cloud
+     instead of turning them in place. */
   .ic .rays  { transform-origin: 20px 20px; animation: spin 14s linear infinite; }
+  .ic .rays-pc { transform-origin: 26px 13px; }
   .ic .cloud { transform-origin: 50% 50%; animation: drift 7s ease-in-out infinite; }
   .ic .drop  { animation: fall 1.5s linear infinite; }
   .ic .flake { animation: flakefall 2.6s linear infinite; }
@@ -420,6 +433,46 @@
     flex-shrink: 0;
   }
 
+  /* Only the calendar's heading carries controls, so only it becomes a flex
+     row. Applying this to every card heading pushed the news card's place
+     name to the far right, away from the word it qualifies. */
+  #cal-card h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* ---- Calendar month navigation ---- */
+  .cal-nav { display: flex; align-items: center; gap: 2px; }
+
+  .cal-nav button {
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1;
+    color: var(--ink-muted);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 3px 7px;
+    cursor: pointer;
+    letter-spacing: 0;
+  }
+
+  .cal-nav button:hover { color: var(--ink); background: var(--hairline); }
+  .cal-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* Only appears once you have navigated away, so the way back is offered
+     exactly when it is needed and costs nothing when it is not. */
+  #cal-today {
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: -0.1px;
+    padding: 3px 8px;
+  }
+
+  #cal-today[hidden] { display: none; }
+
   .scope { font-weight: 400; opacity: 0.7; }
   .scope:not(:empty)::before { content: "· "; }
 
@@ -493,6 +546,27 @@
 
   .cal-next b { font-weight: 600; }
   .cal-next .muted { color: var(--ink-muted); }
+
+  /* The slot is reserved whether or not a day is selected, so clicking one
+     never reflows the card — on a layout this height-constrained, a line
+     appearing from nowhere would push the legend off the bottom. */
+  .cal-detail {
+    min-height: 1.5em;
+    margin-top: 6px;
+    font-size: 13px;
+    letter-spacing: -0.13px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+
+  .cal-detail b { font-weight: 600; color: var(--ink); }
+
+  /* Only days that have something to say are offered as targets. */
+  .cal-d.pay, .cal-d.hol { cursor: pointer; }
+
+  .cal-d.sel { outline: 2px dashed var(--ink-muted); outline-offset: -2px; }
+  .cal-d.today.sel { outline: 2px solid var(--accent); }
 
   .cal-key {
     display: flex;
@@ -587,7 +661,21 @@
      all day. */
   .thumb img.ok { opacity: 1; }
 
-  .headline { min-width: 0; }
+  /* Headlines are links now. They keep the body colour rather than taking a
+     link colour — on an ambient display a wall of blue would read as noise,
+     and the underline on hover is enough of an affordance for the rare moment
+     someone actually walks up to it. */
+  .headline {
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a.headline:hover { text-decoration: underline; }
+  a.headline:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* The whole row is the target, not just the words. */
+  .card li:has(a.headline) { cursor: pointer; }
 
   .meta {
     color: var(--ink-muted);
@@ -724,9 +812,17 @@
       <ul id="news"><li class="empty">run refresh.sh</li></ul>
     </section>
     <section class="card" id="cal-card">
-      <h2>Calendar <span class="scope" id="cal-month"></span></h2>
+      <h2>
+        <span>Calendar <span class="scope" id="cal-month"></span></span>
+        <span class="cal-nav">
+          <button type="button" id="cal-back" aria-label="Previous month">‹</button>
+          <button type="button" id="cal-today" aria-label="Back to this month" hidden>Today</button>
+          <button type="button" id="cal-fwd" aria-label="Next month">›</button>
+        </span>
+      </h2>
       <div class="cal" id="cal"></div>
       <div class="cal-next" id="cal-next"></div>
+      <div class="cal-detail" id="cal-detail"></div>
       <div class="cal-key">
         <span><i class="sw pay"></i>Payday</span>
         <span><i class="sw hol"></i>Holiday</span>
@@ -757,7 +853,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 8;
+  var REV = 9;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1070,7 +1166,7 @@
       return svg(SUN + '<circle cx="20" cy="20" r="7.5" fill="var(--i-sun)"/>');
     }
     if (code === 2) {                       // partly cloudy: sun peeking out
-      return svg('<g class="rays" stroke="var(--i-sun)" stroke-width="2" stroke-linecap="round">' +
+      return svg('<g class="rays rays-pc" stroke="var(--i-sun)" stroke-width="2" stroke-linecap="round">' +
                  '<line x1="26" y1="3" x2="26" y2="7"/><line x1="36" y1="13" x2="32" y2="13"/>' +
                  '<line x1="33" y1="6" x2="30" y2="9"/></g>' +
                  '<circle cx="26" cy="13" r="5.5" fill="var(--i-sun)"/>' + cloudShape("", 18));
@@ -1277,10 +1373,43 @@
              key: o.year + "-" + o.month + "-" + o.day };
   }
 
+  // Months away from the real current month. Always starts at 0: the default
+  // view is this month, every time the page is opened or reloaded.
+  var calOffset = 0;
+  var calSel = null;          // key of the day whose detail is showing
+  var calIdleTimer = null;
+
+  function calShift(n) {
+    calOffset += n;
+    calSel = null;
+    renderCalendar();
+    calTouched();
+  }
+
+  function calHome() {
+    calOffset = 0;
+    calSel = null;
+    renderCalendar();
+  }
+
+  // Browsing pauses the snap-back. Without this the 5-minute auto-reload would
+  // yank the view to the current month while someone was still reading
+  // another one; with it, the view returns on its own once they walk away.
+  function calTouched() {
+    clearTimeout(calIdleTimer);
+    if (calOffset === 0 && !calSel) return;
+    calIdleTimer = setTimeout(calHome, 2 * 60 * 1000);
+  }
+
   function renderCalendar() {
     var tp = todayParts();
-    var Y = tp.y, M = tp.m, D = tp.d;
     var todayKey = tp.key;
+
+    // The grid follows the offset; "today" stays the real today, so its ring
+    // simply does not appear in any other month.
+    var shown = new Date(Date.UTC(tp.y, tp.m + calOffset, 1));
+    var Y = shown.getUTCFullYear(), M = shown.getUTCMonth();
+    var D = tp.d;
 
     var hol = holidaysFor(Y);
     var grid = $("cal");
@@ -1308,16 +1437,32 @@
       var key = ymd(t);
       var cell = document.createElement("div");
       var cls = "cal-d";
-      if (isPayday(t)) cls += " pay";
+      var pay = isPayday(t);
+      if (pay) cls += " pay";
       if (hol[key]) cls += " hol";
       if (key === todayKey) cls += " today";
+      if (key === calSel) cls += " sel";
       cell.className = cls;
       cell.textContent = day;
       if (hol[key]) cell.title = hol[key];
+
+      // Only days carrying a fact are clickable. Closing over the values
+      // rather than reading them back off the element keeps the handler
+      // honest if the markup ever changes.
+      if (pay || hol[key]) {
+        (function (k) {
+          cell.addEventListener("click", function () {
+            calSel = (calSel === k) ? null : k;   // clicking again closes it
+            renderCalendar();
+            calTouched();
+          });
+        })(key);
+      }
       grid.appendChild(cell);
     }
 
     $("cal-month").textContent = MONTHS[M] + " " + Y;
+    $("cal-today").hidden = (calOffset === 0);
 
     // Next payday and next holiday, counted from today inclusive.
     var todayT = Date.UTC(Y, M, D);
@@ -1340,9 +1485,14 @@
         weekday: "short", day: "numeric", month: "short", timeZone: "UTC"
       }).format(new Date(t));
     }
+    // Now that months can be browsed backwards, this gets asked about days in
+    // the past, where "in -5 days" is what the naive version produced.
     function inDays(t) {
       var n = Math.round((t - todayT) / DAY_MS);
-      return n === 0 ? "today" : n === 1 ? "tomorrow" : "in " + n + " days";
+      if (n === 0) return "today";
+      if (n === 1) return "tomorrow";
+      if (n === -1) return "yesterday";
+      return n > 0 ? "in " + n + " days" : Math.abs(n) + " days ago";
     }
 
     var out = "<div><b>Payday</b> " + fmt(nextPay) +
@@ -1352,6 +1502,23 @@
              " <span class=\"muted\">" + inDays(nextHolT) + "</span></div>";
     }
     $("cal-next").innerHTML = out;
+
+    // Detail for the selected day, derived from the key rather than carried
+    // along from the click, so it survives the re-renders that happen on the
+    // minute tick and on a timezone change.
+    var det = $("cal-detail");
+    if (!calSel) {
+      det.innerHTML = "";
+    } else {
+      var sp = calSel.split("-");
+      var st = Date.UTC(+sp[0], +sp[1] - 1, +sp[2]);
+      var names = [];
+      var selHol = holidaysFor(+sp[0])[calSel];
+      if (selHol) names.push(selHol);
+      if (isPayday(st)) names.push("Payday");
+      det.innerHTML = "<b>" + names.join(" · ") + "</b> " + fmt(st) +
+                      " <span class=\"muted\">" + inDays(st) + "</span>";
+    }
   }
 
   // ---- news ----
@@ -1369,7 +1536,24 @@
 
       li.appendChild(thumbFor(src));
 
-      var title = document.createElement("span");
+      // An anchor when there is somewhere to go, a plain span otherwise —
+      // rather than a dead link that looks clickable and does nothing.
+      var title;
+      if (n.link) {
+        title = document.createElement("a");
+        title.href = n.link;
+        title.target = "_blank";
+        // noopener: the opened page must not get a handle back to this one.
+        title.rel = "noopener noreferrer";
+        // The row is a bigger target than the words, and on a display you walk
+        // up to, that matters more than it would on a desktop app.
+        li.addEventListener("click", function (ev) {
+          if (ev.target.closest("a")) return;   // let the real link do its job
+          window.open(n.link, "_blank", "noopener,noreferrer");
+        });
+      } else {
+        title = document.createElement("span");
+      }
       title.className = "headline";
       title.textContent = text;
       li.appendChild(title);
@@ -1543,7 +1727,14 @@
         if (d.status !== "ok" || !d.items || !d.items.length) throw new Error("no items");
         return d.items.slice(0, 8).map(function (it) {
           var p = splitTitle(it.title);
-          return { title: p.title, source: p.source, age: ageFrom(it.pubDate) };
+          return {
+            title: p.title, source: p.source,
+            age: ageFrom(it.pubDate),
+            // Only http(s) is allowed through. The feed is third-party text,
+            // and a javascript: URL in a headline's link would otherwise
+            // become a click target on the page.
+            link: /^https?:\/\//i.test(it.link || "") ? it.link : null
+          };
         });
       });
   }
@@ -1689,6 +1880,10 @@
     host.setAttribute("data-n", Math.min(host.querySelectorAll(".card").length, 3));
   }
 
+  $("cal-back").addEventListener("click", function () { calShift(-1); });
+  $("cal-fwd").addEventListener("click", function () { calShift(1); });
+  $("cal-today").addEventListener("click", function () { calHome(); calTouched(); });
+
   $("rev").textContent = "rev " + REV + " · " + REV_DATE;
 
   layoutCards();
@@ -1707,7 +1902,16 @@
   setInterval(weather, WX_MS);
   setInterval(refreshNews, WX_MS);
 
-  setTimeout(function () { location.reload(); }, RELOAD_MS);
+  // Reloading is how the page stays current, but it also throws away whatever
+  // month is being browsed. If the calendar is not on the default view the
+  // reload waits and asks again — the idle timer will have restored the
+  // default within two minutes of the last click, so this defers, never blocks.
+  (function scheduleReload() {
+    setTimeout(function () {
+      if (calOffset !== 0 || calSel) { scheduleReload(); return; }
+      location.reload();
+    }, RELOAD_MS);
+  })();
 })();
 </script>
 </body>

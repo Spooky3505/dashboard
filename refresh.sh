@@ -30,6 +30,14 @@ import xml.etree.ElementTree as ET
 errors = []
 news = []
 
+def safe_link(u):
+    """Only http(s) survives. Feed content is untrusted: a javascript: URL
+    here would become a click target on the published page."""
+    if not u:
+        return None
+    u = u.strip()
+    return u if u[:7].lower() == "http://" or u[:8].lower() == "https://" else None
+
 def age_of(raw):
     """RSS pubDate / Atom updated -> compact age like '2h'. None if unparseable."""
     if not raw:
@@ -64,13 +72,18 @@ for path in sorted(glob.glob(os.path.join(os.environ["FEEDDIR"], "feed*.xml"))):
             for it in items:
                 t = it.findtext("title")
                 if t:
-                    news.append({"title": t.strip(), "age": age_of(it.findtext("pubDate"))})
+                    news.append({"title": t.strip(),
+                                 "age": age_of(it.findtext("pubDate")),
+                                 "link": safe_link(it.findtext("link"))})
         else:
             ns = {"a": "http://www.w3.org/2005/Atom"}
             for it in root.findall(".//a:entry", ns):
                 t = it.findtext("a:title", namespaces=ns)
                 if t:
-                    news.append({"title": t.strip(), "age": age_of(it.findtext("a:updated", namespaces=ns))})
+                    lk = it.find("a:link", ns)
+                    news.append({"title": t.strip(),
+                                 "age": age_of(it.findtext("a:updated", namespaces=ns)),
+                                 "link": safe_link(lk.get("href") if lk is not None else None)})
     except Exception as e:
         errors.append("feed: %s" % type(e).__name__)
 
