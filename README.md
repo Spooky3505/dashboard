@@ -19,9 +19,37 @@ Known wrinkle: a few PO-Box-only ZIPs carry bad centroids in that dataset —
 `96801` (Honolulu) resolves to open ocean. The fallback can't catch it because
 the lookup technically succeeds.
 
-The big clock deliberately stays on **your device's** time, not the ZIP's. The
-forecast strip is the part that follows the ZIP, and its hours come back from
-the API in that location's own time.
+**Everything follows the ZIP** — clock, forecast and news. The clock starts on
+the default location's zone and re-homes once the weather call returns, since
+Open-Meteo reports the resolved timezone alongside the forecast at no extra
+request.
+
+The ZIP is held in `sessionStorage`, not `localStorage`, and the distinction is
+deliberate: opening the page always starts at the default (30066), while a ZIP
+typed in survives the 5-minute auto-reload for as long as the tab stays open.
+`localStorage` would make a one-off lookup stick forever.
+
+## Local news
+
+News is fetched **in the browser**, because only the browser knows the chosen
+ZIP — a build-time fetch cannot know each viewer's location. Google News carries
+genuinely local stories but sends no CORS header, so it is bridged through
+`api.rss2json.com`, which does.
+
+Two things learned the hard way, both verified in a real browser rather than by
+inspecting headers:
+
+- **GDELT is not usable.** It advertises `Access-Control-Allow-Origin: *` on a
+  HEAD request and is still blocked on the actual GET. Its local relevance was
+  poor anyway — a query for Marietta returned national politics.
+- **Commas break the bridge.** `"Marietta, GA"` makes rss2json return a 500
+  ("Cannot download this RSS feed") on the nested URL; `"Marietta GA"` is fine.
+  The query strips commas for this reason.
+
+rss2json is a free third party and does intermittently 500. When it fails, the
+build-time feed from `data.js` stays on screen and the card heading drops its
+place name — so the card is never blank, but the news is not local at that
+moment.
 
 ## The rain strip
 

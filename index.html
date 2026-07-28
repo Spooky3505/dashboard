@@ -226,6 +226,9 @@
     flex-shrink: 0;
   }
 
+  .scope { font-weight: 400; opacity: 0.7; }
+  .scope:not(:empty)::before { content: "· "; }
+
   .cards.single { grid-template-columns: 1fr; }
 
   .card ul { list-style: none; overflow: hidden; min-height: 0; }
@@ -305,7 +308,7 @@
       <ul id="todos"><li class="empty">run refresh.sh</li></ul>
     </section>
     <section class="card">
-      <h2>News</h2>
+      <h2>News <span class="scope" id="news-scope"></span></h2>
       <ul id="news"><li class="empty">run refresh.sh</li></ul>
     </section>
     <div class="foot">
@@ -329,15 +332,22 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // ---- clock ----
-  // Deliberately no timeZone: the clock is a wall clock for whoever is looking
-  // at it. The forecast strip is the part that follows the chosen ZIP, and it
-  // gets its hours from the API in that location's own time.
-  var timeFmt = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit", minute: "2-digit", hour12: false
-  });
-  var dateFmt = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long", day: "numeric", month: "long"
-  });
+  // The clock follows the selected ZIP's timezone. It starts on the default
+  // location's zone from data.js, then re-homes once the weather call comes
+  // back — Open-Meteo returns the resolved zone alongside the forecast, so
+  // this costs no extra request.
+  var clockTZ = (DATA && DATA.tz) || undefined;
+  var timeFmt, dateFmt;
+
+  function buildFormatters() {
+    timeFmt = new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: clockTZ
+    });
+    dateFmt = new Intl.DateTimeFormat("en-GB", {
+      weekday: "long", day: "numeric", month: "long", timeZone: clockTZ
+    });
+  }
+  buildFormatters();
 
   function tick() {
     var now = new Date();
@@ -346,6 +356,24 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  function setClockZone(tz) {
+    if (!tz || tz === clockTZ) return;
+    clockTZ = tz;
+    buildFormatters();
+    tick();
+    renderGen();
+  }
+
+  // "Updated" reflects when data.js was written, shown in the clock's zone —
+  // so it has to be re-rendered whenever the zone changes.
+  function renderGen() {
+    if (!DATA || !DATA.generated) return;
+    var gen = new Date(DATA.generated);
+    var genEl = $("gen");
+    genEl.textContent = "Updated " + timeFmt.format(gen);
+    genEl.className = (Date.now() - gen.getTime() > STALE_MS) ? "stale" : "";
+  }
 
   // ---- lists ----
   function fill(el, items, render) {
@@ -374,23 +402,9 @@
       });
     }
 
-    fill($("news"), DATA.news, function (li, n) {
-      var title = document.createElement("span");
-      title.textContent = n.title;
-      li.appendChild(title);
-      if (n.age) {
-        var meta = document.createElement("span");
-        meta.className = "meta";
-        meta.textContent = n.age;
-        li.appendChild(meta);
-      }
-    });
+    renderNews(DATA.news);
 
-    var gen = new Date(DATA.generated);
-    var age = Date.now() - gen.getTime();
-    var genEl = $("gen");
-    genEl.textContent = "Updated " + timeFmt.format(gen);
-    if (age > STALE_MS) genEl.className = "stale";
+    renderGen();
 
     if (DATA.errors && DATA.errors.length) {
       $("err").textContent = DATA.errors.join(" · ");
@@ -514,20 +528,91 @@
     $("forecast").hidden = false;
   }
 
+  // ---- news ----
+  function renderNews(items) {
+    fill($("news"), items, function (li, n) {
+      var title = document.createElement("span");
+      title.textContent = n.title;
+      li.appendChild(title);
+      if (n.age) {
+        var meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = n.age;
+        li.appendChild(meta);
+      }
+    });
+  }
+
+  function ageFrom(s) {
+    var t = Date.parse(s);
+    if (isNaN(t)) return null;
+    var secs = (Date.now() - t) / 1000;
+    if (secs < 60) return "now";
+    if (secs < 3600) return Math.floor(secs / 60) + "m";
+    if (secs < 86400) return Math.floor(secs / 3600) + "h";
+    return Math.floor(secs / 86400) + "d";
+  }
+
+  // Google News appends " - Publisher" to every headline. The meta column is
+  // already spoken for by the age, so the suffix is dropped rather than wrapped.
+  function cleanTitle(t) {
+    return String(t).replace(/\s+-\s+[^-]{2,40}$/, "").trim();
+  }
+
+  // Local news has to be fetched in the browser, because the ZIP is only known
+  // there — a build-time fetch can't know each viewer's location. Google News
+  // carries genuinely local stories but sends no CORS header, so it goes
+  // through rss2json, which does. Verified in a real browser: GDELT advertises
+  // CORS on a HEAD request and is still blocked on the actual GET.
+  function localNews(place) {
+    // The comma in "Marietta, GA" makes rss2json fail the nested URL with a
+    // 500 ("Cannot download this RSS feed"). "Marietta GA" is fine.
+    var q = place.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    var rss = "https://news.google.com/rss/search?q=" + encodeURIComponent(q)
+            + "&hl=en-US&gl=US&ceid=US:en";
+    return fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rss))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.status !== "ok" || !d.items || !d.items.length) throw new Error("no items");
+        return d.items.slice(0, 6).map(function (it) {
+          return { title: cleanTitle(it.title), age: ageFrom(it.pubDate) };
+        });
+      });
+  }
+
+  function refreshNews() {
+    if (!loc || !loc.place) return;
+    localNews(loc.place)
+      .then(function (items) {
+        renderNews(items);
+        $("news-scope").textContent = loc.place;
+      })
+      .catch(function () {
+        // rss2json is a free third party with rate limits. If it is unavailable
+        // the build-time feed from data.js stays on screen rather than a blank card.
+        if (DATA && DATA.news) renderNews(DATA.news);
+        $("news-scope").textContent = "";
+      });
+  }
+
   // ---- location: the page default, overridable by the ZIP box ----
   var loc = DATA ? { zip: DATA.zip, lat: DATA.lat, lon: DATA.lon, place: DATA.place } : null;
 
-  // localStorage is unavailable on some origins (notably file:// in some
-  // browsers) and throws rather than returning null, so every access is guarded.
+  // sessionStorage, not localStorage, and the distinction is the point: opening
+  // the page always starts at the default ZIP from data.js, while a ZIP typed
+  // in survives the 5-minute auto-reload for as long as the tab stays open.
+  // localStorage would make a one-off lookup stick permanently.
+  // Access is guarded because storage throws rather than returning null on
+  // some origins.
   function loadSaved() {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
+      var raw = sessionStorage.getItem(STORE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   }
 
   function saveLoc(l) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(l)); } catch (e) { /* not fatal */ }
+    try { sessionStorage.setItem(STORE_KEY, JSON.stringify(l)); } catch (e) { /* not fatal */ }
   }
 
   var saved = loadSaved();
@@ -589,6 +674,7 @@
       saveLoc(l);
       renderPlace();
       weather();
+      refreshNews();
     }).catch(function () {
       input.classList.add("error");
     });
@@ -618,6 +704,7 @@
           "H " + Math.round(d.daily.temperature_2m_max[0]) + "°   " +
           "L " + Math.round(d.daily.temperature_2m_min[0]) + "°";
         applyNight(d.daily.sunrise[0], d.daily.sunset[0]);
+        setClockZone(d.timezone);
         renderForecast(d);
       })
       .catch(function () {
@@ -627,7 +714,9 @@
   }
   renderPlace();
   weather();
+  refreshNews();
   setInterval(weather, WX_MS);
+  setInterval(refreshNews, WX_MS);
 
   setTimeout(function () { location.reload(); }, RELOAD_MS);
 })();
