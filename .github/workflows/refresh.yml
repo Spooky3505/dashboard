@@ -1,0 +1,40 @@
+name: Refresh dashboard data
+
+on:
+  schedule:
+    # Offset from the top of the hour on purpose. GitHub's docs warn that the
+    # schedule event is delayed during high load and that "high load times
+    # include the start of every hour", with queued jobs sometimes dropped.
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same script the local LaunchAgent runs. No duplicate fetch logic.
+      - name: Fetch feeds
+        run: bash refresh.sh
+
+      - name: Commit data.js if it changed
+        run: |
+          if git diff --quiet -- data.js; then
+            echo "No change; nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.js
+          git commit -m "Refresh dashboard data"
+          git push

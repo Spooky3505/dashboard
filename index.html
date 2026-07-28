@@ -48,12 +48,68 @@
   /* ---- Hero band: light tile, edge to edge ---- */
   .hero {
     background: var(--canvas);
-    padding: 56px var(--pad-x) 48px;
+    padding: 48px var(--pad-x) 36px;
+  }
+
+  .hero-top {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: 48px;
   }
+
+  /* ---- Afternoon rain strip ---- */
+  .forecast {
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .verdict {
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1.19;
+    letter-spacing: 0.231px;
+    margin-bottom: 20px;
+  }
+
+  .hours {
+    display: grid;
+    gap: 8px;
+  }
+
+  .hr { text-align: center; }
+
+  /* Past hours stay visible for context but recede. */
+  .hr.past { opacity: 0.3; }
+
+  .hr-h {
+    font-size: 14px;
+    letter-spacing: -0.224px;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+
+  .hr-t {
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: 0.231px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rain chance escalates by contrast, then by the single accent — no second
+     hue introduced. Nothing on this page is clickable, so the accent is free
+     to carry emphasis rather than interactivity. */
+  .hr-r {
+    font-size: 17px;
+    letter-spacing: -0.374px;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-muted);
+  }
+
+  .hr-r.mid  { color: var(--ink); font-weight: 600; }
+  .hr-r.high { color: var(--accent); font-weight: 600; }
 
   .time {
     font-size: clamp(88px, 12.5vw, 190px);
@@ -184,14 +240,20 @@
 <body>
 
   <header class="hero">
-    <div>
-      <div class="time" id="time">--:--</div>
-      <div class="date" id="date">&nbsp;</div>
+    <div class="hero-top">
+      <div>
+        <div class="time" id="time">--:--</div>
+        <div class="date" id="date">&nbsp;</div>
+      </div>
+      <div class="wx">
+        <div class="wx-temp" id="wx-temp">--°</div>
+        <div class="wx-cond" id="wx-cond">&nbsp;</div>
+        <div class="wx-range" id="wx-range">&nbsp;</div>
+      </div>
     </div>
-    <div class="wx">
-      <div class="wx-temp" id="wx-temp">--°</div>
-      <div class="wx-cond" id="wx-cond">&nbsp;</div>
-      <div class="wx-range" id="wx-range">&nbsp;</div>
+    <div class="forecast" id="forecast" hidden>
+      <div class="verdict" id="verdict"></div>
+      <div class="hours" id="hours"></div>
     </div>
   </header>
 
@@ -314,14 +376,111 @@
     document.documentElement.classList.toggle("night", isNight);
   }
 
+  // Afternoon window, 12pm–9pm. Rain thresholds picked so the strip answers
+  // "is outdoor play on tonight" at a glance rather than reporting numbers.
+  var WIN_START = 12, WIN_END = 21;
+  var PLAY_START = 16;              // the after-work hours the verdict judges
+  var RAIN_MID = 25, RAIN_HIGH = 50;
+
+  function hourLabel(h) {
+    var v = h % 12;
+    if (v === 0) v = 12;
+    return v + (h >= 12 ? "p" : "a");
+  }
+
+  function renderForecast(d) {
+    var H = d.hourly, times = H.time;
+    // current.time is already in the location's timezone, so no conversion.
+    var nowStr = d.current.time;
+    var today = nowStr.slice(0, 10);
+    var nowHour = parseInt(nowStr.slice(11, 13), 10);
+
+    var dates = [];
+    for (var i = 0; i < times.length; i++) {
+      var dd = times[i].slice(0, 10);
+      if (dates.indexOf(dd) < 0) dates.push(dd);
+    }
+    // Once the window has passed there is nothing actionable left today,
+    // so roll forward rather than show a full row of dead hours.
+    var target = (nowHour >= WIN_END) ? (dates[1] || dates[0]) : dates[0];
+    var isToday = target === today;
+
+    var rows = [];
+    for (var j = 0; j < times.length; j++) {
+      if (times[j].slice(0, 10) !== target) continue;
+      var hr = parseInt(times[j].slice(11, 13), 10);
+      if (hr < WIN_START || hr > WIN_END) continue;
+      rows.push({ hour: hr, temp: H.temperature_2m[j], prob: H.precipitation_probability[j] });
+    }
+    if (!rows.length) return;
+
+    var host = $("hours");
+    host.innerHTML = "";
+    host.style.gridTemplateColumns = "repeat(" + rows.length + ", 1fr)";
+
+    rows.forEach(function (r) {
+      var cell = document.createElement("div");
+      cell.className = "hr" + (isToday && r.hour < nowHour ? " past" : "");
+
+      var h = document.createElement("div");
+      h.className = "hr-h";
+      h.textContent = hourLabel(r.hour);
+
+      var t = document.createElement("div");
+      t.className = "hr-t";
+      t.textContent = Math.round(r.temp) + "°";
+
+      var p = document.createElement("div");
+      p.className = "hr-r" + (r.prob >= RAIN_HIGH ? " high" : r.prob >= RAIN_MID ? " mid" : "");
+      p.textContent = r.prob + "%";
+
+      cell.appendChild(h);
+      cell.appendChild(t);
+      cell.appendChild(p);
+      host.appendChild(cell);
+    });
+
+    // The strip shows the whole afternoon, but the verdict speaks only to the
+    // after-work hours — that's the decision being made. Judging the full
+    // window instead produces true-but-useless readings like "dry until 1p"
+    // on an evening that's 70% rain.
+    var play = rows.filter(function (r) {
+      return r.hour >= PLAY_START && (!isToday || r.hour >= nowHour);
+    });
+    if (!play.length) {
+      play = rows.filter(function (r) { return r.hour >= PLAY_START; });
+    }
+    if (!play.length) play = rows;
+
+    var peak = 0, firstRisk = null;
+    play.forEach(function (r) {
+      if (r.prob > peak) peak = r.prob;
+      if (firstRisk === null && r.prob >= RAIN_MID) firstRisk = r.hour;
+    });
+
+    var msg;
+    if (firstRisk === null) {
+      msg = "Good for evening play — dry through " + hourLabel(WIN_END);
+    } else if (firstRisk === play[0].hour) {
+      msg = "Wet evening — rain chance up to " + peak + "%";
+    } else {
+      msg = "Dry until " + hourLabel(firstRisk) + ", then up to " + peak + "%";
+    }
+
+    $("verdict").textContent = (isToday ? "" : "Tomorrow: ") + msg;
+    $("forecast").hidden = false;
+  }
+
   function weather() {
     if (!DATA || DATA.lat === undefined) return;
     var url = "https://api.open-meteo.com/v1/forecast"
       + "?latitude=" + encodeURIComponent(DATA.lat)
       + "&longitude=" + encodeURIComponent(DATA.lon)
       + "&current=temperature_2m,weather_code"
+      + "&hourly=temperature_2m,precipitation_probability"
       + "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset"
-      + "&timezone=auto&forecast_days=1";
+      + "&temperature_unit=fahrenheit"
+      + "&timezone=auto&forecast_days=2";
 
     fetch(url)
       .then(function (r) { return r.json(); })
@@ -332,6 +491,7 @@
           "H " + Math.round(d.daily.temperature_2m_max[0]) + "°   " +
           "L " + Math.round(d.daily.temperature_2m_min[0]) + "°";
         applyNight(d.daily.sunrise[0], d.daily.sunset[0]);
+        renderForecast(d);
       })
       .catch(function () {
         // offline: keep whatever is on screen rather than blanking it
