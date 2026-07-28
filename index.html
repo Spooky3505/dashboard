@@ -853,7 +853,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 9;
+  var REV = 10;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1127,11 +1127,25 @@
   // Inline SVG rather than an icon font or sprite sheet: the page has no build
   // step and no external requests, and the parts have to be individually
   // animatable (drops stagger, rays spin, the bolt flashes).
-  var SUN = '<g class="rays" stroke="var(--i-sun)" stroke-width="2.2" stroke-linecap="round">' +
-            '<line x1="20" y1="3" x2="20" y2="8"/><line x1="20" y1="32" x2="20" y2="37"/>' +
-            '<line x1="3" y1="20" x2="8" y2="20"/><line x1="32" y1="20" x2="37" y2="20"/>' +
-            '<line x1="8" y1="8" x2="11.5" y2="11.5"/><line x1="28.5" y1="28.5" x2="32" y2="32"/>' +
-            '<line x1="8" y1="32" x2="11.5" y2="28.5"/><line x1="28.5" y1="11.5" x2="32" y2="8"/></g>';
+  // Eight rays evenly around the disc, generated rather than hand-written.
+  // The partly-cloudy sun used to carry three rays clustered in a single
+  // quadrant, so three quarters of it had no light at all — and spinning that
+  // cluster made the light appear and disappear as it swung behind the cloud.
+  // A sun needs rays all the way round; the cloud is drawn afterwards, so the
+  // ones behind it are occluded naturally, which is what should happen.
+  function sunRays(cx, cy, r1, r2, cls, w) {
+    var s = '<g class="rays' + (cls ? " " + cls : "") + '" stroke="var(--i-sun)" ' +
+            'stroke-width="' + w + '" stroke-linecap="round">';
+    for (var i = 0; i < 8; i++) {
+      var a = i * Math.PI / 4;
+      var dx = Math.cos(a), dy = Math.sin(a);
+      s += '<line x1="' + (cx + dx * r1).toFixed(2) + '" y1="' + (cy + dy * r1).toFixed(2) +
+           '" x2="' + (cx + dx * r2).toFixed(2) + '" y2="' + (cy + dy * r2).toFixed(2) + '"/>';
+    }
+    return s + '</g>';
+  }
+
+  var SUN = sunRays(20, 20, 12, 17, "", 2.2);
 
   function cloudShape(cls, y) {
     return '<g class="cloud ' + cls + '" fill="var(--i-cloud)">' +
@@ -1166,9 +1180,7 @@
       return svg(SUN + '<circle cx="20" cy="20" r="7.5" fill="var(--i-sun)"/>');
     }
     if (code === 2) {                       // partly cloudy: sun peeking out
-      return svg('<g class="rays rays-pc" stroke="var(--i-sun)" stroke-width="2" stroke-linecap="round">' +
-                 '<line x1="26" y1="3" x2="26" y2="7"/><line x1="36" y1="13" x2="32" y2="13"/>' +
-                 '<line x1="33" y1="6" x2="30" y2="9"/></g>' +
+      return svg(sunRays(26, 13, 7.6, 11, "rays-pc", 2) +
                  '<circle cx="26" cy="13" r="5.5" fill="var(--i-sun)"/>' + cloudShape("", 18));
     }
     if (code === 3) return svg(cloudShape("", 15));
