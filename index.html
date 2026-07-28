@@ -58,6 +58,43 @@
     gap: 48px;
   }
 
+  /* ---- ZIP entry ---- */
+  .zipbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .place {
+    font-size: 14px;
+    letter-spacing: -0.224px;
+    color: var(--ink-muted);
+  }
+
+  /* The one interactive element on the page, so it takes the system's pill
+     input grammar — kept at caption size so it stays quiet on an ambient
+     display rather than competing with the weather. */
+  .zip-input {
+    font-family: var(--font);
+    font-size: 14px;
+    letter-spacing: -0.224px;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    padding: 5px 12px;
+    width: 5.5em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+
+  .zip-input:focus { border-color: var(--accent); }
+
+  .zip-input.error { border-color: var(--accent); color: var(--accent); }
+
   /* ---- Afternoon rain strip ---- */
   .forecast {
     margin-top: 36px;
@@ -249,6 +286,11 @@
         <div class="wx-temp" id="wx-temp">--°</div>
         <div class="wx-cond" id="wx-cond">&nbsp;</div>
         <div class="wx-range" id="wx-range">&nbsp;</div>
+        <form class="zipbar" id="zip-form" autocomplete="off">
+          <span class="place" id="place"></span>
+          <input class="zip-input" id="zip-input" type="text" inputmode="numeric"
+                 maxlength="5" placeholder="ZIP" aria-label="ZIP code for forecast">
+        </form>
       </div>
     </div>
     <div class="forecast" id="forecast" hidden>
@@ -278,20 +320,23 @@
   "use strict";
 
   var DATA = window.DASH_DATA || null;
-  var TZ = (DATA && DATA.tz) || undefined;
   var RELOAD_MS = 5 * 60 * 1000;   // shorter than refresh.sh's 15 min, so a
                                    // reload always picks up a fresh data.js
   var WX_MS = 15 * 60 * 1000;
   var STALE_MS = 45 * 60 * 1000;
+  var STORE_KEY = "dash.location";
 
   var $ = function (id) { return document.getElementById(id); };
 
   // ---- clock ----
+  // Deliberately no timeZone: the clock is a wall clock for whoever is looking
+  // at it. The forecast strip is the part that follows the chosen ZIP, and it
+  // gets its hours from the API in that location's own time.
   var timeFmt = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ
+    hour: "2-digit", minute: "2-digit", hour12: false
   });
   var dateFmt = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long", day: "numeric", month: "long", timeZone: TZ
+    weekday: "long", day: "numeric", month: "long"
   });
 
   function tick() {
@@ -344,9 +389,7 @@
     var gen = new Date(DATA.generated);
     var age = Date.now() - gen.getTime();
     var genEl = $("gen");
-    genEl.textContent = "Updated " + new Intl.DateTimeFormat("en-GB", {
-      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ
-    }).format(gen);
+    genEl.textContent = "Updated " + timeFmt.format(gen);
     if (age > STALE_MS) genEl.className = "stale";
 
     if (DATA.errors && DATA.errors.length) {
@@ -471,11 +514,95 @@
     $("forecast").hidden = false;
   }
 
+  // ---- location: the page default, overridable by the ZIP box ----
+  var loc = DATA ? { zip: DATA.zip, lat: DATA.lat, lon: DATA.lon, place: DATA.place } : null;
+
+  // localStorage is unavailable on some origins (notably file:// in some
+  // browsers) and throws rather than returning null, so every access is guarded.
+  function loadSaved() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function saveLoc(l) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(l)); } catch (e) { /* not fatal */ }
+  }
+
+  var saved = loadSaved();
+  if (saved && saved.lat !== undefined) loc = saved;
+
+  function renderPlace() {
+    if (!loc) return;
+    $("place").textContent = loc.place || "";
+    $("zip-input").value = loc.zip || "";
+  }
+
+  // zippopotam gives the actual ZIP centroid; Open-Meteo's geocoder only knows
+  // the city, which for 30066 lands about six miles off. Precise first, then
+  // fall back so a single third-party outage doesn't break the box.
+  function resolveZip(zip) {
+    return fetch("https://api.zippopotam.us/us/" + encodeURIComponent(zip))
+      .then(function (r) {
+        if (!r.ok) throw new Error("not found");
+        return r.json();
+      })
+      .then(function (d) {
+        var p = d.places[0];
+        return {
+          zip: zip,
+          lat: parseFloat(p.latitude),
+          lon: parseFloat(p.longitude),
+          place: p["place name"] + ", " + p["state abbreviation"]
+        };
+      })
+      .catch(function () {
+        return fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&country=US&name="
+                     + encodeURIComponent(zip))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d.results || !d.results.length) throw new Error("not found");
+            var r0 = d.results[0];
+            return {
+              zip: zip,
+              lat: r0.latitude,
+              lon: r0.longitude,
+              place: r0.name + (r0.admin1 ? ", " + r0.admin1 : "")
+            };
+          });
+      });
+  }
+
+  $("zip-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var input = $("zip-input");
+    var zip = input.value.trim();
+    if (!/^\d{5}$/.test(zip)) {
+      input.classList.add("error");
+      return;
+    }
+    input.classList.remove("error");
+    input.blur();
+    resolveZip(zip).then(function (l) {
+      loc = l;
+      saveLoc(l);
+      renderPlace();
+      weather();
+    }).catch(function () {
+      input.classList.add("error");
+    });
+  });
+
+  $("zip-input").addEventListener("input", function () {
+    this.classList.remove("error");
+  });
+
   function weather() {
-    if (!DATA || DATA.lat === undefined) return;
+    if (!loc || loc.lat === undefined) return;
     var url = "https://api.open-meteo.com/v1/forecast"
-      + "?latitude=" + encodeURIComponent(DATA.lat)
-      + "&longitude=" + encodeURIComponent(DATA.lon)
+      + "?latitude=" + encodeURIComponent(loc.lat)
+      + "&longitude=" + encodeURIComponent(loc.lon)
       + "&current=temperature_2m,weather_code"
       + "&hourly=temperature_2m,precipitation_probability"
       + "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset"
@@ -498,6 +625,7 @@
         $("wx-cond").textContent = "Weather unavailable";
       });
   }
+  renderPlace();
   weather();
   setInterval(weather, WX_MS);
 

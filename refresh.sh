@@ -22,7 +22,8 @@ for url in $FEEDS; do
   i=$((i + 1))
 done
 
-LAT="$LAT" LON="$LON" TZNAME="$TZNAME" FEEDDIR="$FEEDDIR" python3 <<'PY' > data.js.tmp
+LAT="$LAT" LON="$LON" TZNAME="$TZNAME" ZIP="${ZIP:-}" PLACE="${PLACE:-}" \
+  FEEDDIR="$FEEDDIR" python3 <<'PY' > data.js.tmp
 import os, json, glob, datetime, email.utils
 import xml.etree.ElementTree as ET
 
@@ -94,6 +95,8 @@ payload = {
     "tz":     os.environ["TZNAME"],
     "lat":    float(os.environ["LAT"]),
     "lon":    float(os.environ["LON"]),
+    "zip":    os.environ.get("ZIP") or None,
+    "place":  os.environ.get("PLACE") or None,
     "news":   news[:6],
     "errors": errors,
 }

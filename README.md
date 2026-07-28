@@ -3,6 +3,26 @@
 A glanceable ambient dashboard — clock, date, weather, an afternoon rain
 forecast and news headlines. Live at <https://spooky3505.github.io/dashboard>.
 
+## Setting your location
+
+The ZIP box in the top right changes the forecast. Your choice is stored in your
+own browser (`localStorage`) and never leaves it — the repo's `config.sh` only
+supplies the default (30066, Marietta GA) for a first-time visitor.
+
+ZIPs resolve through `api.zippopotam.us`, which returns the actual ZIP centroid.
+Open-Meteo's own geocoder is the fallback, but only as a fallback: it resolves a
+ZIP to the whole city, which for 30066 lands about six miles from the ZIP itself.
+Both send `access-control-allow-origin: *`, so the lookup runs in the browser
+with no server involved.
+
+Known wrinkle: a few PO-Box-only ZIPs carry bad centroids in that dataset —
+`96801` (Honolulu) resolves to open ocean. The fallback can't catch it because
+the lookup technically succeeds.
+
+The big clock deliberately stays on **your device's** time, not the ZIP's. The
+forecast strip is the part that follows the ZIP, and its hours come back from
+the API in that location's own time.
+
 ## The rain strip
 
 Hourly rain probability from noon to 9pm, in Fahrenheit, with a one-line
