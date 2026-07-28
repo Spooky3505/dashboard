@@ -640,13 +640,37 @@
     .zipbar { flex-wrap: wrap; }
   }
 
-  /* Height, not width, is what this layout actually runs out of. Below roughly
-     a 13" laptop's viewport the calendar's countdown and legend cannot fit at
-     any sensible type size, and the no-scroll lock would silently cut them off
-     the bottom of the screen — which is exactly the bug this replaced. Short
-     viewports scroll instead. The target display is ~900px tall and never
-     reaches this. */
-  @media (max-height: 780px) {
+  /* Height is what this layout actually runs out of, not width. A 1440x900
+     laptop is ~900px fullscreen but only ~760–810 windowed once tabs, the URL
+     bar and a bookmarks bar are accounted for — all of which are ordinary, not
+     edge cases. Rather than fall back to scrolling there (on an always-on
+     display nobody scrolls, so content below the fold is content lost), the
+     hero gives up the space: a smaller clock, tighter padding, smaller icons.
+     That is enough for the cards to keep every essential line. */
+  @media (max-height: 860px) {
+    .hero { padding: 16px var(--pad-x) 14px; }
+    .time { font-size: clamp(56px, 7.5vw, 100px); }
+    .date { font-size: 19px; margin-top: 6px; }
+    .forecast { margin-top: 12px; padding-top: 11px; }
+    .verdict { font-size: 19px; margin-bottom: 8px; }
+    .hr-h { margin-bottom: 2px; }
+    .hr-t { font-size: 19px; }
+    .hr-b { margin-top: 4px; }
+    .hr-r { margin-top: 4px; }
+    .ic { width: 34px; height: 34px; }
+    .wx-now .ic { width: 50px; height: 50px; }
+    .wx-temp { font-size: 44px; }
+    .wx-cond { font-size: 18px; }
+    .wx-range { font-size: 15px; margin-top: 4px; }
+    .zipbar { margin-top: 8px; }
+    .cards { padding-top: 14px; }
+    .card { padding: 14px 18px; }
+    .card h2 { margin-bottom: 9px; }
+  }
+
+  /* Below this even the compressed hero cannot buy enough room, so scrolling
+     is the honest fallback — reachable content beats hidden content. */
+  @media (max-height: 620px) {
     html, body { height: auto; overflow: auto; }
     body { display: block; }
     .cards { grid-template-rows: none; }
@@ -954,8 +978,14 @@
         // return a poster frame when thumbs=true, so use that; if even that is
         // missing, keep whatever image was cached from a previous day rather
         // than dropping to a black screen.
+        // `url` (NASA's web-sized copy) rather than `hdurl`, on measurement:
+        // today's hdurl is 7.10 MB against 0.16 MB — 45x the bytes for a
+        // 5815px image on a 1440px display, re-decoded on every 5-minute
+        // reload. It sits behind a darkening scrim and three blurred cards,
+        // so the extra resolution buys almost nothing visible. Swap the two
+        // here if you want maximum sharpness over a lighter page.
         var img = null;
-        if (d.media_type === "image") img = d.hdurl || d.url;
+        if (d.media_type === "image") img = d.url || d.hdurl;
         else if (d.thumbnail_url) img = d.thumbnail_url;
         if (!img) { if (c) showApod(c); return; }
 

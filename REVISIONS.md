@@ -14,11 +14,14 @@ Look at the footer of the page, find that rev below, and check out its commit:
 
 ```bash
 cd site
-git log --oneline            # confirm the SHA is still there
-git checkout <sha> -- index.html
-git commit -m "Roll dashboard back to rev N"
+git fetch --tags
+git checkout rev7 -- index.html     # tag name is "rev" + the number
+git commit -m "Roll dashboard back to rev 7"
 git push
 ```
+
+Every revision from 8 onward is tagged `revN`, which is stabler than the SHA —
+a tag survives the follow-up commits a revision sometimes needs.
 
 That restores the page only. `data.js` keeps refreshing on its own, so news and
 the timestamp stay current after a rollback.
@@ -28,7 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
-| 8 | 2026-07-28 | `fb59fc8` | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |
+| 8 | 2026-07-28 | tag `rev8` | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |
 | 7 | 2026-07-27 | `411894d` | Animated colour weather icons on the hourly strip |
 | 6 | 2026-07-27 | `9635b00` | Fixed five bugs found in review (timezone-correct night mode, responsive breakpoint, locale assumption, midnight rollover) |
 | 5 | 2026-07-27 | `cfe4524` | Payday and holiday calendar card |
@@ -48,5 +51,5 @@ When changing `index.html` in a way a viewer would notice:
 1. Bump `REV` and set `REV_DATE` in `index.html`.
 2. `cp index.html site/index.html` — the two copies must stay identical.
 3. Add a row to the table above.
-4. Commit, then fill the SHA into the row (it is not known until after the
-   commit) and amend or follow up.
+4. Commit, then `git tag revN && git push --tags`. Tag rather than SHA: the
+   SHA is not knowable until after the commit that would have to contain it.
