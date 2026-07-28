@@ -200,10 +200,14 @@ temperature in Georgia — 88° reading as 97° is the number that matters.
 
 ## Legibility over the picture
 
-Photo mode's panels carry **no fill at all** — the picture runs through them
-uninterrupted. What keeps text on them readable is a `brightness()` backdrop
-filter rather than a colour wash: it dims what is behind each card in
-proportion to how bright that actually is, so the image still reads as itself.
+Photo mode's panels are **completely transparent** — no fill and no backdrop
+filter, so a panel is optically identical to the picture around it. Only a
+hairline encloses it. Any filter on the card, even a pure brightness one, is
+what made the panels read as darker rectangles laid over the image.
+
+Legibility therefore cannot come from the panels. It comes from two things
+that do not single them out: a page-wide scrim, which treats every pixel
+alike, and a text halo, which darkens only the few pixels around each glyph.
 
 The same filter sits over the whole background, and it is there because the
 APOD swings from a near-black starfield to a full-frame bright nebula. A fixed
@@ -217,13 +221,18 @@ available. A compositing filter needs no such access.
 
 Measured against a synthetic worst-case bright frame:
 
-| Text | Before | After |
+| Text | Original | Now |
 |---|---|---|
-| White body text | 3.12:1 | 6.1:1 |
-| Muted text | 1.95:1 | 4.8:1 |
+| White body text | 3.12:1 | 4.19:1 |
+| Muted text | 1.95:1 | 3.42:1 |
 | Accent (`#2997ff`) | 1.04:1 | replaced in photo mode |
 
-WCAG AA wants 4.5:1 for body text. The accent was effectively invisible against
+Plus the halo, which lifts contrast at the glyph edge beyond what a flat
+background ratio captures. WCAG AA wants 4.5:1 for body text, so body text is
+close and muted text clears the 3.0 large-text bar rather than the body one.
+That is the cost of fully transparent panels, accepted deliberately: an
+earlier build reached 6.1:1 and 4.8:1 with a `brightness(0.7)` filter on each
+card, and that filter is precisely what made them look like rectangles. The accent was effectively invisible against
 a bright frame, so photo mode drops it for the after-work label and uses a pale
 blue for the selected-day line. Muted text is raised from `#cccccc` to
 `#e8e8e8` in photo mode for the same reason.

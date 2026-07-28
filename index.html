@@ -58,7 +58,7 @@
     --canvas:    transparent;
     --parchment: transparent;
     --card:      transparent;
-    --hairline:  rgba(255,255,255,0.18);
+    --hairline:  rgba(255,255,255,0.26);
 
     /* Muted text is raised in photo mode. Measured against a worst-case bright
        picture, #cccccc came out at 1.95:1 — unreadable. This is 4.8:1 behind
@@ -72,22 +72,30 @@
      this transparent the scrim alone is not enough — the shadow is doing real
      work here, not decoration, and it is what lets the panels stay this light
      without the type breaking up over a bright patch of sky. */
+  /* A halo, not a drop shadow. With the panels fully transparent this is the
+     only thing separating a glyph from whatever pixel happens to be behind
+     it, so it is tight and opaque close in, then falls off — it has to lift
+     contrast at the glyph edge without visibly clouding the picture. */
   html.photo .hero, html.photo .card, html.photo .foot {
-    text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.55);
+    text-shadow:
+      0 1px 2px rgba(0,0,0,0.95),
+      0 0 4px rgba(0,0,0,0.85),
+      0 0 11px rgba(0,0,0,0.65);
   }
 
-  /* The panels carry no fill at all — the picture runs through them
-     uninterrupted. What keeps the text on them readable is a brightness
-     filter rather than a colour wash: it dims whatever is behind the card in
-     proportion to how bright that actually is, so the image still reads as
-     itself instead of being covered over.
+  /* Completely transparent: no fill and no backdrop filter, so a panel is
+     optically identical to the picture around it. Only the hairline encloses
+     it. A filter here — even a pure brightness one — is what made the cards
+     read as darker rectangles laid over the image.
 
-     0.7 is where the numbers land: on a worst-case bright frame, white text
-     goes from 3.1:1 to 6.1:1 and muted text from 2.0:1 to 4.8:1. Both clear
-     WCAG AA. On a typical dark APOD the filter is barely perceptible. */
+     Legibility therefore cannot come from the panels. It comes from two
+     things that do not single them out: the page-wide scrim below, which
+     treats every pixel alike, and the text halo, which darkens only the few
+     pixels around each glyph. */
   html.photo .card {
-    backdrop-filter: brightness(0.7) saturate(1.04);
-    -webkit-backdrop-filter: brightness(0.7) saturate(1.04);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* The accent measured 1.04:1 against a bright frame — effectively invisible.
@@ -130,12 +138,12 @@
     content: "";
     position: absolute;
     inset: 0;
-    backdrop-filter: brightness(0.62) saturate(1.06);
-    -webkit-backdrop-filter: brightness(0.62) saturate(1.06);
+    backdrop-filter: brightness(0.55) saturate(1.06);
+    -webkit-backdrop-filter: brightness(0.55) saturate(1.06);
     background:
       linear-gradient(to bottom,
-        rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.10) 38%,
-        rgba(0,0,0,0.20) 72%, rgba(0,0,0,0.46) 100%);
+        rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.18) 38%,
+        rgba(0,0,0,0.24) 72%, rgba(0,0,0,0.44) 100%);
   }
 
   #bg-credit {
@@ -949,7 +957,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 11;
+  var REV = 12;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
