@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 11 | 2026-07-28 | tag `rev11` | Play-window band, feels-like promoted, capped line length, adaptive scrim, transparent photo panels, wind spelled out, simplified day detail |
 | 10 | 2026-07-28 | tag `rev10` | Partly-cloudy sun given a full 8-ray corona — it had only three rays in one quadrant |
 | 9 | 2026-07-28 | tag `rev9` | Partly-cloudy icon fix, browsable calendar months with holiday names on click, clickable headlines, more transparent photo-mode panels |
 | 8 | 2026-07-28 | tag `rev8` | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |

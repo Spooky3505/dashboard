@@ -198,6 +198,41 @@ whether to play outside, and the chance of rain answers that where humidity does
 not. Feels-like is included because it diverges sharply from the actual
 temperature in Georgia — 88° reading as 97° is the number that matters.
 
+## Legibility over the picture
+
+Photo mode's panels carry **no fill at all** — the picture runs through them
+uninterrupted. What keeps text on them readable is a `brightness()` backdrop
+filter rather than a colour wash: it dims what is behind each card in
+proportion to how bright that actually is, so the image still reads as itself.
+
+The same filter sits over the whole background, and it is there because the
+APOD swings from a near-black starfield to a full-frame bright nebula. A fixed
+dark wash tuned for the worst case buries the good ones; a multiplicative
+filter scales with whatever is actually there.
+
+It has to work this way because **the pixels cannot be read**. `apod.nasa.gov`
+sends no `access-control-allow-origin`, so drawing the image to a canvas taints
+it and `getImageData` throws — measuring average luminance in script is not
+available. A compositing filter needs no such access.
+
+Measured against a synthetic worst-case bright frame:
+
+| Text | Before | After |
+|---|---|---|
+| White body text | 3.12:1 | 6.1:1 |
+| Muted text | 1.95:1 | 4.8:1 |
+| Accent (`#2997ff`) | 1.04:1 | replaced in photo mode |
+
+WCAG AA wants 4.5:1 for body text. The accent was effectively invisible against
+a bright frame, so photo mode drops it for the after-work label and uses a pale
+blue for the selected-day line. Muted text is raised from `#cccccc` to
+`#e8e8e8` in photo mode for the same reason.
+
+One known soft spot: the hero band has no card behind it, so on an unusually
+bright picture its smallest text (the wind line, ~11px) sits nearer 3.5:1 than
+4.5:1. Most APODs are space and therefore dark. If a bright one lands and it
+bothers you, the fix is one number — the top stop of the scrim gradient.
+
 ## The rain strip
 
 Hourly rain probability from noon to 9pm, in Fahrenheit, with a one-line
