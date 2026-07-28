@@ -272,13 +272,127 @@
     border-top: 1px solid var(--hairline);
   }
 
+  /* The verdict answers "can I play tonight"; the commute answers "how long to
+     get there". Same kind of statement, so they share a line — and the space
+     to the verdict's right was empty anyway. */
+  .verdict-row {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 12px;
+  }
+
   .verdict {
     font-size: 21px;
     font-weight: 600;
     line-height: 1.19;
     letter-spacing: 0.231px;
-    margin-bottom: 12px;
   }
+
+  /* ---- Commute ---- */
+  .commute {
+    font-family: var(--font);
+    font-size: 17px;
+    letter-spacing: -0.374px;
+    line-height: 1.2;
+    color: var(--ink-muted);
+    background: none;
+    border: none;
+    padding: 2px 0;
+    cursor: pointer;
+    text-align: right;
+    white-space: nowrap;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .commute:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .commute .cm-mins { font-weight: 600; color: var(--ink); }
+  .commute .cm-lbl { opacity: 0.75; }
+
+  /* Delay is the whole point of asking, so it is the only part that colours.
+     Free-flow gets no badge at all rather than a green one — a badge that is
+     always present stops being read. */
+  .commute .cm-delay { font-weight: 600; margin-left: 6px; }
+  .commute .cm-delay.mid  { color: var(--hol-ink); }
+  .commute .cm-delay.high { color: var(--accent); }
+
+  html.night .commute .cm-delay.mid { color: #ffd60a; }
+
+  /* ---- Commute setup ---- */
+  /* Floated, not inserted. Opening it inline added its height to the hero and
+     pushed the calendar off the bottom of the screen — the same failure this
+     layout has had twice before. As an overlay it costs the page no height at
+     all, so nothing below it can be displaced. */
+  .cm-setup {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    z-index: 20;
+    width: min(460px, 100%);
+    box-shadow: 0 10px 34px rgba(0,0,0,0.30);
+    padding: 14px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--card);
+  }
+
+  .cm-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+  .cm-row label {
+    font-size: 12px;
+    letter-spacing: -0.12px;
+    color: var(--ink-muted);
+    width: 84px;
+    flex: none;
+  }
+
+  .cm-row input {
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 6px 10px;
+    flex: 1;
+    min-width: 0;
+    outline: none;
+  }
+
+  .cm-row input:focus { border-color: var(--accent); }
+  .cm-row input.bad { border-color: var(--accent); color: var(--accent); }
+
+  .cm-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+
+  .cm-note {
+    font-size: 11px;
+    letter-spacing: -0.11px;
+    color: var(--ink-muted);
+    flex: 1;
+    line-height: 1.35;
+  }
+
+  .cm-btn {
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    padding: 5px 14px;
+    cursor: pointer;
+    flex: none;
+  }
+
+  .cm-btn.cm-primary { border-color: var(--accent); color: var(--accent); }
+  .cm-setup[hidden] { display: none; }
+  .commute[hidden] { display: none; }
+
+  html.photo .cm-setup { background: rgba(20,20,22,0.55); }
+  html.photo .cm-row input, html.photo .cm-btn { background: rgba(0,0,0,0.35); }
 
   /* Two rows: the band's label, then the hours. No column gap — the cells
      have to touch for the play-window tint to read as one continuous band
@@ -938,9 +1052,33 @@
       </div>
     </div>
     <div class="forecast" id="forecast" hidden>
-      <div class="verdict" id="verdict"></div>
+      <div class="verdict-row">
+        <div class="verdict" id="verdict"></div>
+        <button type="button" class="commute" id="commute" hidden></button>
+    <form class="cm-setup" id="cm-setup" hidden autocomplete="off">
+      <div class="cm-row">
+        <label for="cm-key">TomTom key</label>
+        <input id="cm-key" type="text" spellcheck="false" placeholder="paste your API key">
+      </div>
+      <div class="cm-row">
+        <label for="cm-from">From</label>
+        <input id="cm-from" type="text" placeholder="home address or ZIP">
+      </div>
+      <div class="cm-row">
+        <label for="cm-to">To</label>
+        <input id="cm-to" type="text" placeholder="work address">
+      </div>
+      <div class="cm-actions">
+        <span class="cm-note" id="cm-note">Stored only in this browser — never sent to the repo or the published page.</span>
+        <button type="button" class="cm-btn" id="cm-clear">Clear</button>
+        <button type="submit" class="cm-btn cm-primary">Save</button>
+      </div>
+    </form>
+      </div>
       <div class="hours" id="hours"></div>
     </div>
+
+
   </header>
 
   <main class="cards">
@@ -995,7 +1133,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 13;
+  var REV = 14;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1962,6 +2100,192 @@
         $("news-scope").textContent = "";
       });
   }
+
+  // ---- commute: drive time with live traffic (TomTom) ----
+  // Everything here — the API key and both addresses — lives in this browser's
+  // localStorage and nowhere else. It is deliberately NOT in the repo: the
+  // dashboard is published, and a home address committed to a public page is
+  // not something to undo later. It also means the key never enters git, so
+  // there is nothing to leak and no referrer restriction to maintain.
+  //
+  // TomTom rather than Google: 50,000 tile / 2,500 non-tile requests a day on
+  // the free tier with no billing account, against Google's 10,000 map loads a
+  // month since the $200 credit was withdrawn in March 2025. This page reloads
+  // every five minutes — about 288 route calls a day — which is comfortable
+  // against 2,500 and would have consumed most of Google's monthly allowance.
+  var CM_KEY = "dash.commute";
+  var CM_MS = 10 * 60 * 1000;
+  var DELAY_MID = 5, DELAY_HIGH = 12;   // minutes over free-flow
+
+  function cmLoad() {
+    try {
+      var raw = localStorage.getItem(CM_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function cmSave(c) {
+    try { localStorage.setItem(CM_KEY, JSON.stringify(c)); } catch (e) { /* not fatal */ }
+  }
+
+  var commute = cmLoad();
+
+  function cmRender(state, data) {
+    var el = $("commute");
+    el.hidden = false;
+
+    if (state === "unset") {
+      el.innerHTML = '<span class="cm-lbl">Set up commute</span>';
+      return;
+    }
+    if (state === "error") {
+      el.innerHTML = '<span class="cm-lbl">Commute unavailable</span>';
+      return;
+    }
+
+    var mins = Math.round(data.travel / 60);
+    var delay = Math.round(data.delay / 60);
+    var cls = delay >= DELAY_HIGH ? " high" : delay >= DELAY_MID ? " mid" : "";
+
+    var html = '<span class="cm-lbl">' + esc(commute.toLabel) + '</span> ' +
+               '<span class="cm-mins">' + mins + ' min</span>';
+    // Only shown when there is a delay worth reporting. "+0" every morning is
+    // noise, and a number that is usually zero stops being looked at.
+    if (delay >= 1) {
+      html += '<span class="cm-delay' + cls + '">+' + delay + '</span>';
+    }
+    el.innerHTML = html;
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function cmFetch() {
+    if (!commute || !commute.key || !commute.from || !commute.to) {
+      cmRender("unset");
+      return;
+    }
+    var url = "https://api.tomtom.com/routing/1/calculateRoute/"
+      + commute.from.lat + "," + commute.from.lon + ":"
+      + commute.to.lat + "," + commute.to.lon + "/json"
+      + "?key=" + encodeURIComponent(commute.key)
+      + "&traffic=true&computeTravelTimeFor=all&routeType=fastest&travelMode=car";
+
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error("http " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        var s = d.routes && d.routes[0] && d.routes[0].summary;
+        if (!s) throw new Error("no route");
+        // trafficDelayInSeconds is the delay against free flow. Falling back to
+        // the difference of the two travel times covers responses where
+        // computeTravelTimeFor was not honoured.
+        var delay = (typeof s.trafficDelayInSeconds === "number")
+          ? s.trafficDelayInSeconds
+          : (s.travelTimeInSeconds - (s.noTrafficTravelTimeInSeconds || s.travelTimeInSeconds));
+        cmRender("ok", { travel: s.travelTimeInSeconds, delay: Math.max(0, delay) });
+      })
+      .catch(function () { cmRender("error"); });
+  }
+
+  // Addresses are geocoded once, on save, and only the coordinates are kept —
+  // so the typed address is not held any longer than it needs to be.
+  function cmGeocode(key, q) {
+    return fetch("https://api.tomtom.com/search/2/geocode/"
+                 + encodeURIComponent(q) + ".json?limit=1&countrySet=US&key="
+                 + encodeURIComponent(key))
+      .then(function (r) {
+        if (!r.ok) throw new Error("http " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        var hit = d.results && d.results[0];
+        if (!hit) throw new Error("not found");
+        return {
+          lat: hit.position.lat,
+          lon: hit.position.lon,
+          label: (hit.address && (hit.address.municipality || hit.address.freeformAddress)) || q
+        };
+      });
+  }
+
+  function cmOpen() {
+    var f = $("cm-setup");
+    f.hidden = !f.hidden;
+    if (!f.hidden) {
+      $("cm-key").value = (commute && commute.key) || "";
+      $("cm-from").value = (commute && commute.fromLabel) || "";
+      $("cm-to").value = (commute && commute.toLabel) || "";
+      $("cm-key").focus();
+    }
+  }
+
+  $("commute").addEventListener("click", cmOpen);
+
+  // An overlay that can only be dismissed by the control that opened it is a
+  // trap on a display people walk up to and poke at.
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") $("cm-setup").hidden = true;
+  });
+
+  document.addEventListener("click", function (ev) {
+    var f = $("cm-setup");
+    if (f.hidden) return;
+    if (f.contains(ev.target) || ev.target.closest("#commute")) return;
+    f.hidden = true;
+  });
+
+  $("cm-clear").addEventListener("click", function () {
+    try { localStorage.removeItem(CM_KEY); } catch (e) { /* not fatal */ }
+    commute = null;
+    $("cm-setup").hidden = true;
+    cmRender("unset");
+  });
+
+  $("cm-setup").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var key = $("cm-key").value.trim();
+    var from = $("cm-from").value.trim();
+    var to = $("cm-to").value.trim();
+
+    [["cm-key", key], ["cm-from", from], ["cm-to", to]].forEach(function (p) {
+      $(p[0]).classList.toggle("bad", !p[1]);
+    });
+    if (!key || !from || !to) return;
+
+    $("cm-note").textContent = "Looking up addresses…";
+
+    Promise.all([cmGeocode(key, from), cmGeocode(key, to)])
+      .then(function (r) {
+        commute = {
+          key: key,
+          from: { lat: r[0].lat, lon: r[0].lon },
+          to:   { lat: r[1].lat, lon: r[1].lon },
+          fromLabel: from,
+          toLabel: r[1].label
+        };
+        cmSave(commute);
+        $("cm-setup").hidden = true;
+        $("cm-note").textContent = CM_NOTE;
+        cmFetch();
+      })
+      .catch(function (e) {
+        $("cm-note").textContent =
+          /http 40[13]/.test(e.message) ? "That key was rejected by TomTom."
+                                        : "Could not find one of those addresses.";
+      });
+  });
+
+  var CM_NOTE = "Stored only in this browser — never sent to the repo or the published page.";
+  $("cm-note").textContent = CM_NOTE;
+
+  cmFetch();
+  setInterval(cmFetch, CM_MS);
 
   // ---- location: the page default, overridable by the ZIP box ----
   var loc = DATA ? { zip: DATA.zip, lat: DATA.lat, lon: DATA.lon, place: DATA.place } : null;

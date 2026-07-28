@@ -51,6 +51,47 @@ build-time feed from `data.js` stays on screen and the card heading drops its
 place name — so the card is never blank, but the news is not local at that
 moment.
 
+## Commute
+
+Drive time with live traffic, beside the rain verdict: **"Atlanta 31 min +8"**.
+The `+8` is minutes over free-flow and is the only part that colours — amber
+past 5 minutes, accent past 12. At free flow there is no badge at all, because
+a badge that is present every morning stops being read.
+
+Click it to set up. **Your API key and both addresses are stored in this
+browser's `localStorage` and nowhere else.** They are deliberately not in the
+repo: this dashboard is published, and a home address committed to a public
+page cannot be taken back. It also means the key never enters git — nothing to
+leak, no referrer restriction to maintain, and no key rotation if the repo is
+ever cloned. Addresses are geocoded once on save and only the coordinates are
+kept.
+
+### Why TomTom rather than Google
+
+Google's Maps Embed API — the drop-in iframe — has **no traffic layer**. Its
+five modes take `center`, `zoom`, `maptype`, `language` and `region`, and that
+is all. Live traffic needs the Maps JavaScript API and its `TrafficLayer`.
+
+That is where the economics stop working. Google withdrew the universal $200
+monthly credit in March 2025; Dynamic Maps now gets 10,000 free loads a month,
+then $7 per 1,000. This page reloads every five minutes — **288 loads a day,
+about 8,640 a month from a single always-on screen**, or 86% of the free
+allowance before it is opened anywhere else.
+
+TomTom's free tier is 50,000 tile and 2,500 non-tile requests **per day**, with
+no credit card and commercial use permitted. One route call per reload is ~288
+a day against 2,500. No billing account is attached, so a leaked key costs
+nothing but rate limits.
+
+Verified in a real browser rather than by reading headers, after the GDELT
+lesson: both the routing and geocoding endpoints return a normal HTTP 401 for a
+bad key rather than being blocked by CORS, which is what proves they are usable
+from the page.
+
+The setup panel is an overlay, not an inline block. Opening it inline added its
+height to the hero and pushed the calendar off the bottom of the screen — the
+third time this layout has been broken that way.
+
 ## Calendar
 
 Current month, with today ringed in the accent colour, paydays green and
