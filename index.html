@@ -42,6 +42,71 @@
     --hol-ink: #ffe9a3;
   }
 
+  /* Photo mode rides on top of the dark token set (it is always applied with
+     .night) and only re-points the surfaces: the background is the NASA image,
+     so every panel has to become translucent or it would simply cover it. */
+  html.photo {
+    --canvas:    rgba(0,0,0,0.30);
+    --parchment: transparent;
+    --card:      rgba(20,20,22,0.52);
+    --hairline:  rgba(255,255,255,0.14);
+  }
+
+  html.photo body { background: transparent; }
+
+  /* Text over an astrophotograph needs its own contrast floor — the scrim
+     below handles the bulk, this catches the bright patches. */
+  html.photo .hero, html.photo .card, html.photo .foot {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+  }
+
+  html.photo .card { backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+
+  #bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #000;
+    background-size: cover;
+    background-position: center;
+    display: none;
+  }
+
+  html.photo #bg { display: block; }
+
+  /* Scrim: without it, body copy sits directly on a nebula and is unreadable.
+     Weighted to the top and bottom, where the text actually is. */
+  #bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to bottom,
+        rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.30) 38%,
+        rgba(0,0,0,0.42) 72%, rgba(0,0,0,0.70) 100%);
+  }
+
+  #bg-credit {
+    position: fixed;
+    right: 10px;
+    bottom: 6px;
+    z-index: 0;
+    font-size: 11px;
+    letter-spacing: -0.11px;
+    color: rgba(255,255,255,0.62);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    max-width: 40vw;
+    text-align: right;
+    display: none;
+  }
+
+  html.photo #bg-credit { display: block; }
+
+  /* The credit is pinned to the bottom-right corner, which is where the
+     revision label already sits. Photo mode gives the footer the extra room
+     rather than letting the two lines collide. */
+  html.photo .cards { padding-bottom: 32px; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
@@ -59,9 +124,13 @@
   }
 
   /* ---- Hero band: light tile, edge to edge ---- */
+  /* Padding is deliberately tight. The hero has to share a ~900px-tall laptop
+     display with two cards whose content is all essential, and the hourly
+     strip grew when the icons landed — every pixel spent here was coming
+     straight out of the calendar's legend. */
   .hero {
     background: var(--canvas);
-    padding: 48px var(--pad-x) 36px;
+    padding: 26px var(--pad-x) 22px;
   }
 
   .hero-top {
@@ -77,8 +146,29 @@
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 12px;
+    margin-top: 10px;
   }
+
+  /* ---- Appearance toggle ---- */
+  .mode-btn {
+    font-family: var(--font);
+    font-size: 14px;
+    letter-spacing: -0.224px;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 9999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+    outline: none;
+  }
+
+  .mode-btn:focus-visible { border-color: var(--accent); }
+  .mode-btn .mode-ic { font-size: 13px; line-height: 1; }
 
   .place {
     font-size: 14px;
@@ -110,8 +200,8 @@
 
   /* ---- Afternoon rain strip ---- */
   .forecast {
-    margin-top: 36px;
-    padding-top: 24px;
+    margin-top: 20px;
+    padding-top: 16px;
     border-top: 1px solid var(--hairline);
   }
 
@@ -120,7 +210,7 @@
     font-weight: 600;
     line-height: 1.19;
     letter-spacing: 0.231px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   .hours {
@@ -231,23 +321,45 @@
   .hr-r.high { color: var(--accent); font-weight: 600; }
 
   .time {
-    font-size: clamp(88px, 12.5vw, 190px);
+    font-size: clamp(72px, 10vw, 142px);
     font-weight: 600;
     line-height: 0.92;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
 
+  /* AM/PM rides at a fraction of the clock's size. At the display size the
+     hour is set in, a full-height "PM" would read as part of the number. */
+  .time .ampm {
+    font-size: 0.28em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-muted);
+    margin-left: 0.12em;
+    vertical-align: 0.9em;
+  }
+
   .date {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 400;
     line-height: 1.14;
     letter-spacing: 0.196px;
     color: var(--ink-muted);
-    margin-top: 16px;
+    margin-top: 10px;
   }
 
   .wx { text-align: right; flex-shrink: 0; }
+
+  /* Icon sits beside the temperature, not above it — stacking it would add
+     ~70px of hero height, which is exactly the budget the cards below need. */
+  .wx-now {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+  }
+
+  .wx-now .ic { width: 64px; height: 64px; margin: 0; flex: none; }
 
   .wx-temp {
     font-size: 56px;
@@ -262,7 +374,7 @@
     font-weight: 600;
     line-height: 1.19;
     letter-spacing: 0.231px;
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
   .wx-range {
@@ -271,13 +383,13 @@
     line-height: 1.47;
     letter-spacing: -0.374px;
     color: var(--ink-muted);
-    margin-top: 8px;
+    margin-top: 6px;
     font-variant-numeric: tabular-nums;
   }
 
   /* ---- Card row: utility cards on parchment ---- */
   .cards {
-    padding: 40px var(--pad-x) 24px;
+    padding: 20px var(--pad-x) 16px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     /* Cards take the slack, footer pins to the bottom. Without an explicit
@@ -291,7 +403,7 @@
     background: var(--card);
     border: 1px solid var(--hairline);
     border-radius: 18px;
-    padding: 24px;
+    padding: 18px 20px;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -304,7 +416,7 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-muted);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     flex-shrink: 0;
   }
 
@@ -331,7 +443,7 @@
     text-align: center;
     font-size: 15px;
     line-height: 1;
-    padding: 8px 0;
+    padding: 6px 0;
     border-radius: 8px;
     font-variant-numeric: tabular-nums;
   }
@@ -366,11 +478,17 @@
     font-weight: 600;
   }
 
+  /* The calendar grid may shrink; the countdown and the legend may not. They
+     are the answer the card exists to give, and they were the first things to
+     be pushed off the bottom of the screen when the hero grew. */
+  .cal { flex: 0 1 auto; }
+
   .cal-next {
-    margin-top: 14px;
+    margin-top: 12px;
     font-size: 15px;
     letter-spacing: -0.3px;
-    line-height: 1.5;
+    line-height: 1.45;
+    flex-shrink: 0;
   }
 
   .cal-next b { font-weight: 600; }
@@ -380,10 +498,11 @@
     display: flex;
     gap: 14px;
     margin-top: auto;
-    padding-top: 12px;
+    padding-top: 10px;
     font-size: 12px;
     letter-spacing: -0.12px;
     color: var(--ink-muted);
+    flex-shrink: 0;
   }
 
   .cal-key span { display: flex; align-items: center; gap: 5px; }
@@ -405,7 +524,11 @@
   .cards[data-n="2"] { grid-template-columns: 1fr 330px; }
   .cards[data-n="3"] { grid-template-columns: 1fr 1.25fr 330px; }
 
-  .card ul { list-style: none; overflow: hidden; min-height: 0; }
+  /* flex-basis 0, not auto: the list takes exactly the space the card has left
+     over, independent of how many headlines are in it. With `auto` the box
+     resized as items were hidden, which made the ResizeObserver below chase
+     its own tail. */
+  .card ul { list-style: none; overflow: hidden; min-height: 0; flex: 1 1 0; }
 
   .card li {
     font-size: 17px;
@@ -416,9 +539,55 @@
     border-top: 1px solid var(--hairline);
     display: flex;
     gap: 12px;
+    align-items: center;
   }
 
   .card li:first-child { border-top: none; }
+
+  /* A headline is either fully on screen or not shown at all. `hidden` alone
+     loses to `display: flex` above, so it needs the override — without it the
+     list clipped the last headline through the middle of its text. */
+  .card li[hidden] { display: none !important; }
+
+  /* ---- News thumbnails ---- */
+  /* Google News strips images from its feed — no thumbnail, no enclosure, and
+     the link is an opaque redirect, so there is no article image to be had.
+     The publisher's favicon is the closest real picture available; the
+     monogram tile behind it is what shows when the domain guess misses. */
+  .thumb {
+    position: relative;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: #fff;
+    text-shadow: none;
+  }
+
+  .thumb img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #fff;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  /* Swapped in only once the favicon has actually decoded. Loading it the
+     other way round flashes a broken-image glyph on a display that is on
+     all day. */
+  .thumb img.ok { opacity: 1; }
+
+  .headline { min-width: 0; }
 
   .meta {
     color: var(--ink-muted);
@@ -460,11 +629,35 @@
       grid-template-rows: none;
     }
 
-    .card ul { overflow: visible; }
+    /* Nothing is height-capped down here, so the list shows every headline.
+       flex-basis must go back to auto as well: with basis 0 in an auto-height
+       card there is no free space to grow into, the list measured zero-high
+       and every item was trimmed away. */
+    .card ul { overflow: visible; flex: 0 0 auto; }
+
+    /* The hero right-hand column has three rows of controls now; below this
+       width it wraps rather than crushing the ZIP box. */
+    .zipbar { flex-wrap: wrap; }
+  }
+
+  /* Height, not width, is what this layout actually runs out of. Below roughly
+     a 13" laptop's viewport the calendar's countdown and legend cannot fit at
+     any sensible type size, and the no-scroll lock would silently cut them off
+     the bottom of the screen — which is exactly the bug this replaced. Short
+     viewports scroll instead. The target display is ~900px tall and never
+     reaches this. */
+  @media (max-height: 780px) {
+    html, body { height: auto; overflow: auto; }
+    body { display: block; }
+    .cards { grid-template-rows: none; }
+    .card ul { overflow: visible; flex: 0 0 auto; }
   }
 </style>
 </head>
 <body>
+
+  <div id="bg"></div>
+  <div id="bg-credit"></div>
 
   <header class="hero">
     <div class="hero-top">
@@ -473,10 +666,18 @@
         <div class="date" id="date">&nbsp;</div>
       </div>
       <div class="wx">
-        <div class="wx-temp" id="wx-temp">--°</div>
-        <div class="wx-cond" id="wx-cond">&nbsp;</div>
+        <div class="wx-now">
+          <span id="wx-icon"></span>
+          <div>
+            <div class="wx-temp" id="wx-temp">--°</div>
+            <div class="wx-cond" id="wx-cond">&nbsp;</div>
+          </div>
+        </div>
         <div class="wx-range" id="wx-range">&nbsp;</div>
         <form class="zipbar" id="zip-form" autocomplete="off">
+          <button class="mode-btn" id="mode-btn" type="button" aria-label="Change appearance">
+            <span class="mode-ic" id="mode-ic">☀</span><span id="mode-label">Auto</span>
+          </button>
           <span class="place" id="place"></span>
           <input class="zip-input" id="zip-input" type="text" inputmode="numeric"
                  maxlength="5" placeholder="ZIP" aria-label="ZIP code for forecast">
@@ -510,6 +711,7 @@
     <div class="foot">
       <span id="gen">no data.js</span>
       <span id="err"></span>
+      <span id="rev"></span>
     </div>
   </main>
 
@@ -524,6 +726,15 @@
   var WX_MS = 15 * 60 * 1000;
   var STALE_MS = 45 * 60 * 1000;
   var STORE_KEY = "dash.location";
+  var MODE_KEY = "dash.mode";
+  var APOD_KEY = "dash.apod";
+
+  // Page revision. Bumped by hand whenever the layout or behaviour changes —
+  // deliberately NOT derived from the git SHA, because the refresh workflow
+  // commits data.js every 15 minutes and the number would churn without
+  // anything visible having changed. REVISIONS.md maps each one to its commit.
+  var REV = 8;
+  var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -533,11 +744,13 @@
   // back — Open-Meteo returns the resolved zone alongside the forecast, so
   // this costs no extra request.
   var clockTZ = (DATA && DATA.tz) || undefined;
-  var timeFmt, dateFmt, dayFmt;
+  var timeFmt, dateFmt, dayFmt, footFmt;
 
   function buildFormatters() {
-    timeFmt = new Intl.DateTimeFormat("en-GB", {
-      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: clockTZ
+    // hour: "numeric", not "2-digit" — 12-hour time is written "1:26 PM",
+    // never "01:26 PM".
+    timeFmt = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric", minute: "2-digit", hour12: true, timeZone: clockTZ
     });
     dateFmt = new Intl.DateTimeFormat("en-GB", {
       weekday: "long", day: "numeric", month: "long", timeZone: clockTZ
@@ -546,8 +759,33 @@
     dayFmt = new Intl.DateTimeFormat("en-US", {
       year: "numeric", month: "2-digit", day: "2-digit", timeZone: clockTZ
     });
+    footFmt = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric", minute: "2-digit", hour12: true, timeZone: clockTZ
+    });
   }
   buildFormatters();
+
+  // The clock is set at ~142px. Rendering "11:26 PM" as one string puts the
+  // meridiem at that size too, where it reads as part of the number — so the
+  // parts are split and AM/PM is styled down separately. formatToParts rather
+  // than a string split: the position of the meridiem is a locale's business,
+  // not something to hardcode.
+  function renderClock(now) {
+    var parts = timeFmt.formatToParts(now);
+    var clock = "", period = "";
+    parts.forEach(function (p) {
+      if (p.type === "dayPeriod") period = p.value;
+      else if (p.type === "hour" || p.type === "minute" || p.type === "literal") clock += p.value;
+    });
+    var el = $("time");
+    el.textContent = clock.trim();
+    if (period) {
+      var sp = document.createElement("span");
+      sp.className = "ampm";
+      sp.textContent = period;
+      el.appendChild(sp);
+    }
+  }
 
   // Tracks the rendered day so the calendar rolls over at midnight instead of
   // waiting for the next reload to notice.
@@ -555,7 +793,7 @@
 
   function tick() {
     var now = new Date();
-    $("time").textContent = timeFmt.format(now);
+    renderClock(now);
     $("date").textContent = dateFmt.format(now);
 
     var key = todayParts().key;
@@ -580,7 +818,7 @@
     if (!DATA || !DATA.generated) return;
     var gen = new Date(DATA.generated);
     var genEl = $("gen");
-    genEl.textContent = "Updated " + timeFmt.format(gen);
+    genEl.textContent = "Updated " + footFmt.format(gen);
     genEl.className = (Date.now() - gen.getTime() > STALE_MS) ? "stale" : "";
   }
 
@@ -634,15 +872,117 @@
     95: "Thunderstorm", 96: "Thunderstorm, hail", 99: "Thunderstorm, hail"
   };
 
+  // ---- appearance: auto / light / dark / photo ----
+  // The button cycles the three explicit modes; "auto" is the untouched
+  // default and is what follows sunrise/sunset. Kept in localStorage, not
+  // sessionStorage: a display preference has to survive both the 5-minute
+  // location.reload() and closing the tab. (The ZIP deliberately does not —
+  // different question, different answer.)
+  var MODES = ["auto", "light", "dark", "photo"];
+  var MODE_UI = {
+    auto:  { ic: "◑", label: "Auto"  },
+    light: { ic: "☀", label: "Light" },
+    dark:  { ic: "☾", label: "Dark"  },
+    photo: { ic: "✦", label: "NASA"  }
+  };
+
+  var mode = "auto";
+  try {
+    var savedMode = localStorage.getItem(MODE_KEY);
+    if (MODES.indexOf(savedMode) >= 0) mode = savedMode;
+  } catch (e) { /* storage throws rather than returning null on some origins */ }
+
+  var autoNight = false;   // last sunrise/sunset verdict, remembered so that
+                           // switching back to auto doesn't wait for the next
+                           // weather call to take effect
+
+  function applyMode() {
+    var root = document.documentElement;
+    var dark = (mode === "dark") || (mode === "photo") ||
+               (mode === "auto" && autoNight);
+    root.classList.toggle("night", dark);
+    root.classList.toggle("photo", mode === "photo");
+
+    var ui = MODE_UI[mode];
+    $("mode-ic").textContent = ui.ic;
+    $("mode-label").textContent = ui.label;
+    $("mode-btn").setAttribute("aria-label", "Appearance: " + ui.label);
+
+    if (mode === "photo") loadApod();
+  }
+
+  $("mode-btn").addEventListener("click", function () {
+    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+    try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* not fatal */ }
+    applyMode();
+  });
+
+  // ---- NASA Astronomy Picture of the Day ----
+  // Cached by date in localStorage and fetched at most once a day. This is not
+  // an optimisation: the page reloads itself every 5 minutes, and the DEMO_KEY
+  // rate limit measured on the live endpoint was 10/hour — an uncached fetch
+  // would exhaust the quota inside the first hour and the background would
+  // then fail for the rest of the day.
+  function apodCached() {
+    try {
+      var raw = localStorage.getItem(APOD_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function showApod(a) {
+    if (!a || !a.img) return;
+    $("bg").style.backgroundImage = 'url("' + a.img + '")';
+    $("bg-credit").textContent =
+      a.title + (a.credit ? " · " + a.credit : "") + " · NASA APOD";
+  }
+
+  var apodPending = false;
+
+  function loadApod() {
+    var todayKey = todayParts().key;
+    var c = apodCached();
+    if (c && c.day === todayKey) { showApod(c); return; }
+    if (apodPending) return;
+    apodPending = true;
+
+    fetch("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        // Roughly one APOD in fifteen is a video: there is no hdurl and `url`
+        // is a player embed, which cannot be used as a background. NASA does
+        // return a poster frame when thumbs=true, so use that; if even that is
+        // missing, keep whatever image was cached from a previous day rather
+        // than dropping to a black screen.
+        var img = null;
+        if (d.media_type === "image") img = d.hdurl || d.url;
+        else if (d.thumbnail_url) img = d.thumbnail_url;
+        if (!img) { if (c) showApod(c); return; }
+
+        var rec = { day: todayKey, img: img, title: d.title || "", credit: d.copyright || "" };
+        try { localStorage.setItem(APOD_KEY, JSON.stringify(rec)); } catch (e) { /* not fatal */ }
+        showApod(rec);
+      })
+      .catch(function () {
+        // Offline or rate-limited: a stale picture beats a black rectangle.
+        if (c) showApod(c);
+      })
+      .then(function () { apodPending = false; });
+  }
+
   // Open-Meteo returns sunrise/sunset as naive strings in the *location's*
   // zone ("2026-07-27T20:10"), and `new Date()` on those parses them in the
   // viewer's zone. Comparing a real instant against them put the page in dark
   // mode at 7pm Los Angeles time for a viewer in New York — broad daylight.
   // current.time is naive in the same zone, so compare the strings directly.
+  //
+  // This only records the verdict. Applying it is applyMode()'s job, because
+  // weather() runs every 15 minutes and toggling the class directly here would
+  // have overwritten a manually chosen mode within the quarter hour.
   function applyNight(nowLocal, sunrise, sunset) {
     if (!nowLocal || !sunrise || !sunset) return;
-    var isNight = nowLocal < sunrise || nowLocal >= sunset;
-    document.documentElement.classList.toggle("night", isNight);
+    autoNight = nowLocal < sunrise || nowLocal >= sunset;
+    if (mode === "auto") applyMode();
   }
 
   // Afternoon window, 12pm–9pm. Rain thresholds picked so the strip answers
@@ -987,15 +1327,93 @@
   // ---- news ----
   function renderNews(items) {
     fill($("news"), items, function (li, n) {
+      // data.js headlines (the build-time BBC fallback) carry no source, so
+      // the split runs here rather than only in the live path.
+      var src = n.source;
+      var text = n.title;
+      if (src === undefined) {
+        var parts = splitTitle(n.title);
+        text = parts.title;
+        src = parts.source;
+      }
+
+      li.appendChild(thumbFor(src));
+
       var title = document.createElement("span");
-      title.textContent = n.title;
+      title.className = "headline";
+      title.textContent = text;
       li.appendChild(title);
+
       if (n.age) {
         var meta = document.createElement("span");
         meta.className = "meta";
         meta.textContent = n.age;
         li.appendChild(meta);
       }
+    });
+    trimList($("news"));
+  }
+
+  // A headline is shown whole or not at all. The list is height-capped by the
+  // card, and CSS overflow would cut the last one through the middle of its
+  // text — which is what was happening. Measuring is the only way to know how
+  // many fit: it depends on the window, the ZIP (headline lengths differ) and
+  // whether a headline wraps to two lines.
+  function trimList(ul) {
+    if (!ul) return;
+    var items = ul.children, i;
+    for (i = 0; i < items.length; i++) items[i].hidden = false;
+
+    // Where the layout is not height-capped — the stacked breakpoints, which
+    // scroll — the list is sized by its content and there is nothing to trim.
+    // `overflow: visible` is the signal for that, set by the same media
+    // queries that unlock scrolling. Without this check the list measured as
+    // zero-height there and hid every single item.
+    if (getComputedStyle(ul).overflowY === "visible") return;
+
+    var limit = ul.getBoundingClientRect().bottom;
+    for (i = 0; i < items.length; i++) {
+      if (items[i].getBoundingClientRect().bottom > limit + 0.5) {
+        // Everything after this one is lower still, so stop measuring.
+        for (var j = i; j < items.length; j++) items[j].hidden = true;
+        break;
+      }
+    }
+  }
+
+  function trimAll() {
+    trimList($("news"));
+    trimList($("todos"));
+  }
+
+  // Coalesced to the next frame rather than debounced on a timer. A timer that
+  // is cleared and reset on every observer fire can be pushed indefinitely
+  // while the layout is still settling, and the trim then runs against
+  // geometry that has already been superseded — or not at all.
+  var trimPending = false;
+  function trimSoon() {
+    if (trimPending) return;
+    trimPending = true;
+    requestAnimationFrame(function () {
+      trimPending = false;
+      trimAll();
+    });
+  }
+
+  window.addEventListener("resize", trimSoon);
+
+  // The window is not the only thing that changes the space a list has. The
+  // forecast strip starts hidden and is revealed when the weather call returns,
+  // which takes ~180px straight out of the cards — after the first trim had
+  // already run. The result was a list trimmed to a height it no longer had,
+  // with the last headline sliced through the middle. Watching the list's own
+  // box catches that and every other cause (font swap, ZIP change, card count)
+  // without having to enumerate them.
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(trimSoon);
+    ["news", "todos"].forEach(function (id) {
+      var el = $(id);
+      if (el) ro.observe(el);
     });
   }
 
@@ -1009,10 +1427,73 @@
     return Math.floor(secs / 86400) + "d";
   }
 
-  // Google News appends " - Publisher" to every headline. The meta column is
-  // already spoken for by the age, so the suffix is dropped rather than wrapped.
-  function cleanTitle(t) {
-    return String(t).replace(/\s+-\s+[^-]{2,40}$/, "").trim();
+  // Google News appends " - Publisher" to every headline. The suffix comes off
+  // the headline (the meta column is already spoken for by the age) but the
+  // publisher is kept, because it is the only thing in the feed that can
+  // produce a picture.
+  //
+  // Splitting on the LAST spaced hyphen, not the first: an earlier pattern
+  // required the publisher to contain no hyphen at all, so "WSB-TV" and
+  // "The Atlanta Journal-Constitution" never matched and their names stayed
+  // stuck on the end of the headline.
+  function splitTitle(t) {
+    var s = String(t).trim();
+    var m = s.match(/^(.*\S)\s+-\s+(\S.{0,48})$/);
+    if (!m) return { title: s, source: "" };
+    return { title: m[1].trim(), source: m[2].trim() };
+  }
+
+  // Best-effort guess at the publisher's domain. It is right more often than
+  // not ("Patch" → patch.com, "FOX 5 Atlanta" → fox5atlanta.com, "WSB-TV" →
+  // wsbtv.com) and wrong sometimes ("The Atlanta Journal-Constitution" is
+  // ajc.com). A miss costs nothing: Google's favicon service answers 404 for
+  // an unknown domain — verified, not assumed — so the image errors and the
+  // monogram simply stays visible.
+  function sourceDomain(name) {
+    var s = name.toLowerCase().trim();
+    if (/\.(com|org|net|gov|edu|tv|co\.uk)$/.test(s)) return s.replace(/\s+/g, "");
+    s = s.replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+    return s ? s + ".com" : "";
+  }
+
+  function monogram(name) {
+    var words = name.replace(/[^a-zA-Z0-9 ]/g, " ").trim().split(/\s+/);
+    if (!words[0]) return "?";
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  // Deterministic hue, so a given publisher keeps the same tile colour between
+  // reloads instead of flickering to a new one every five minutes.
+  function tileHue(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  function thumbFor(source) {
+    var el = document.createElement("span");
+    el.className = "thumb";
+    var name = source || "News";
+    el.style.background = "hsl(" + tileHue(name) + ", 42%, 42%)";
+    el.textContent = monogram(name);
+
+    // No publisher in the headline means no domain to guess. Falling back to
+    // the placeholder name would resolve to news.com — a real site — and stamp
+    // an unrelated logo on the story. The monogram alone is correct here.
+    if (!source) return el;
+
+    var domain = sourceDomain(name);
+    if (!domain) return el;
+
+    var img = document.createElement("img");
+    img.alt = "";
+    img.referrerPolicy = "no-referrer";
+    img.loading = "lazy";
+    img.addEventListener("load", function () { img.classList.add("ok"); });
+    img.src = "https://www.google.com/s2/favicons?sz=64&domain=" + encodeURIComponent(domain);
+    el.appendChild(img);
+    return el;
   }
 
   // Local news has to be fetched in the browser, because the ZIP is only known
@@ -1030,8 +1511,9 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d.status !== "ok" || !d.items || !d.items.length) throw new Error("no items");
-        return d.items.slice(0, 6).map(function (it) {
-          return { title: cleanTitle(it.title), age: ageFrom(it.pubDate) };
+        return d.items.slice(0, 8).map(function (it) {
+          var p = splitTitle(it.title);
+          return { title: p.title, source: p.source, age: ageFrom(it.pubDate) };
         });
       });
   }
@@ -1157,6 +1639,7 @@
       .then(function (d) {
         $("wx-temp").textContent = Math.round(d.current.temperature_2m) + "°";
         $("wx-cond").textContent = WMO[d.current.weather_code] || "—";
+        $("wx-icon").innerHTML = weatherIcon(d.current.weather_code);
         $("wx-range").textContent =
           "H " + Math.round(d.daily.temperature_2m_max[0]) + "°   " +
           "L " + Math.round(d.daily.temperature_2m_min[0]) + "°";
@@ -1176,11 +1659,21 @@
     host.setAttribute("data-n", Math.min(host.querySelectorAll(".card").length, 3));
   }
 
+  $("rev").textContent = "rev " + REV + " · " + REV_DATE;
+
   layoutCards();
+  applyMode();
   renderCalendar();
   renderPlace();
+  trimAll();
   weather();
   refreshNews();
+
+  // Late-settling content — web font swap, the favicon tiles, the forecast
+  // strip appearing — each changes how much fits. The observer catches these,
+  // but a couple of unconditional passes cost nothing and remove any
+  // dependence on observer timing.
+  [400, 1500, 4000].forEach(function (ms) { setTimeout(trimAll, ms); });
   setInterval(weather, WX_MS);
   setInterval(refreshNews, WX_MS);
 

@@ -71,6 +71,90 @@ midnight.
 A payday landing on a holiday happens twice a year (27 Nov and 25 Dec in 2026).
 Those days take the green fill plus a yellow dot, so neither fact is lost.
 
+## Appearance
+
+The pill in the top right cycles four states: **Auto** (follows sunrise and
+sunset at the chosen ZIP), **Light**, **Dark**, and **NASA** — the Astronomy
+Picture of the Day as a full-bleed background.
+
+The choice is kept in `localStorage`, not `sessionStorage`, and unlike the ZIP
+it is meant to stick: the page reloads itself every five minutes, and a display
+preference that reset on every reload would be useless.
+
+A manual choice is never overridden. The weather call runs every 15 minutes and
+used to toggle the dark class directly, which would have flipped a manually
+chosen Light back to Dark within the quarter hour. Sunrise/sunset now only
+*records* its verdict; applying it is skipped unless the mode is Auto.
+
+Photo mode needs its own treatment rather than just a background image. Opaque
+cards would hide the picture entirely, and body text over a bright nebula is
+unreadable — so the panels go translucent with a blur, and a gradient scrim sits
+between image and content, weighted to the top and bottom where the text is.
+The image title and photographer are credited in the corner.
+
+APOD is fetched **once a day** and cached by date. This is not an optimisation:
+the measured DEMO_KEY rate limit is 10 requests/hour, and the page reloads 12
+times an hour, so an uncached fetch would exhaust the quota inside the first
+hour and leave the background broken for the rest of the day. Roughly one APOD
+in fifteen is a video rather than an image; those have no usable background URL,
+so the poster frame is used, falling back to the previous day's picture.
+
+## News thumbnails
+
+Each headline carries a small tile. It is the **publisher's favicon**, not the
+article's own image — Google News strips images from its feed entirely: no
+thumbnail, no enclosure, and the link is an opaque redirect, so there is no
+article picture to be had at any price.
+
+The publisher name is recovered from the " - Publisher" suffix Google appends to
+every headline, and its domain is guessed from that name. The guess is right
+more often than not — Patch → patch.com, FOX 5 Atlanta → fox5atlanta.com, WSB-TV
+→ wsbtv.com — and wrong sometimes: the Atlanta Journal-Constitution is ajc.com,
+which no rule would produce.
+
+A miss costs nothing, because behind every tile is a coloured monogram of the
+publisher's initials, and the favicon only replaces it once it has actually
+decoded. Google's favicon service answers 404 for a domain it does not know —
+verified against real requests, not assumed — so a wrong guess simply leaves the
+monogram in place. Some domains do return a generic globe icon instead of a
+404; those show the globe rather than the monogram.
+
+The tile colour is derived from the publisher's name, so a given source keeps
+the same colour between reloads instead of flickering to a new one every five
+minutes.
+
+## Fitting on the screen
+
+Two things were being cut off, and they had different causes.
+
+**Headlines** were sliced through the middle of a line. The list is height-capped
+by its card and CSS `overflow` cuts wherever it happens to land. Now the list is
+measured and a headline is either shown whole or not at all.
+
+Measuring once was not enough. The forecast strip starts hidden and appears when
+the weather call returns, taking ~180px straight out of the cards *after* the
+first measurement had already run — so the list had been trimmed to a height it
+no longer had. A `ResizeObserver` on the list catches that and every other cause
+(font swap, ZIP change, window resize) without having to enumerate them.
+
+**The calendar's countdown and legend** were not clipped, they were pushed off
+the bottom of the screen entirely — the card was simply shorter than its
+content. Hiding overflow would not have brought them back; that content is the
+answer the card exists to give. The height came back out of the hero, which had
+grown when the hourly icons landed: tighter padding, a smaller clock, and the
+current-conditions icon moved beside the temperature instead of above it.
+
+Below roughly a 13" laptop's viewport height there is no type size at which it
+all fits, so short viewports scroll instead of silently cutting content off.
+
+## Revision number
+
+The footer shows `rev N · date`. `REVISIONS.md` maps each revision to its commit
+and what it changed, so a version you dislike can be rolled back to a specific
+one. The number is bumped by hand rather than derived from the git SHA —
+`data.js` is committed every 15 minutes by the refresh workflow, and a SHA-based
+revision would churn several times an hour with nothing visibly different.
+
 ## Hourly icons
 
 Each hour carries an animated SVG icon: the sun's rays turn, clouds drift, rain
