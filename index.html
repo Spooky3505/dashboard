@@ -26,7 +26,7 @@
     --hol-ink: #4a3a00;
 
     /* Tint marking the hours the verdict actually judges. */
-    --band: rgba(0,102,204,0.06);
+    --band: rgba(0,102,204,0.70);
   }
 
   /* Dark tiles — used after sunset. Same system, alternate surface. */
@@ -44,7 +44,7 @@
     --hol: #6b5405;
     --hol-ink: #ffe9a3;
 
-    --band: rgba(41,151,255,0.10);
+    --band: rgba(41,151,255,0.85);
   }
 
   /* Photo mode rides on top of the dark token set (it is always applied with
@@ -103,6 +103,10 @@
      to carry the accent on its own. */
   html.photo .play-label { color: var(--ink); }
 
+  /* In photo mode the picture already separates the hero from the cards, and
+     a rule drawn edge to edge across it reads as a scratch on the image. */
+  html.photo .forecast { border-top: none; }
+
   /* Same problem, same fix: the selected-day line keeps a blue cast so it
      still reads as a different kind of statement from the countdowns, but
      pale enough to clear AA (4.8:1) behind the card filter. */
@@ -146,26 +150,29 @@
         rgba(0,0,0,0.24) 72%, rgba(0,0,0,0.44) 100%);
   }
 
+  /* The credit is a footer item, not a floating one. Pinned to the corner it
+     was a third scrap of text along the bottom edge, competing with the
+     revision label it sat directly beneath. In the footer the three read as
+     one line. */
+  /* Roughly doubles the wash. White body text goes from 4.19:1 to about
+     7.5:1 against a worst-case bright frame; the picture is still legible as
+     a picture, just quieter. */
+  html.photo.dim #bg::after {
+    backdrop-filter: brightness(0.34) saturate(1.06);
+    -webkit-backdrop-filter: brightness(0.34) saturate(1.06);
+    background:
+      linear-gradient(to bottom,
+        rgba(0,0,0,0.46) 0%, rgba(0,0,0,0.34) 38%,
+        rgba(0,0,0,0.38) 72%, rgba(0,0,0,0.56) 100%);
+  }
+
   #bg-credit {
-    position: fixed;
-    right: 10px;
-    bottom: 6px;
-    z-index: 0;
-    font-size: 11px;
-    letter-spacing: -0.11px;
-    color: rgba(255,255,255,0.62);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-    max-width: 40vw;
+    max-width: 46%;
     text-align: right;
     display: none;
   }
 
   html.photo #bg-credit { display: block; }
-
-  /* The credit is pinned to the bottom-right corner, which is where the
-     revision label already sits. Photo mode gives the footer the extra room
-     rather than letting the two lines collide. */
-  html.photo .cards { padding-bottom: 32px; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -292,11 +299,13 @@
   .hr.past { opacity: 0.3; }
 
   /* The strip shows the whole afternoon but the verdict speaks only to the
-     hours after work. That scope was invisible — the band makes the sentence
-     and the cells it is about the same object. */
-  .hr.play { background: var(--band); }
-  .hr.play-first { border-radius: 10px 0 0 10px; }
-  .hr.play-last  { border-radius: 0 10px 10px 0; }
+     hours after work. That scope was invisible — this marks it.
+
+     A rule beneath the cells rather than a tint behind them. Once every panel
+     on the page went transparent, a filled rectangle here was the only opaque
+     element left, and it sat over the brightest part of the picture. A 2px
+     underline carries the same meaning and adds no area. */
+  .hr.play { box-shadow: inset 0 -2px 0 var(--band); }
 
   .play-label {
     grid-row: 1;
@@ -365,7 +374,14 @@
   .hr-b .wind-ar, .hr-w .wind-ar { display: inline-block; }
 
   /* ---- Animated weather icons ---- */
-  .ic { width: 42px; height: 42px; display: block; margin: 0 auto; }
+  /* Fluid: a fixed 34px icon inside a 184px cell at a 2000px viewport looked
+     abandoned. Clamped so it never outgrows a narrow column either. */
+  .ic {
+    width: clamp(32px, 2.9vw, 52px);
+    height: clamp(32px, 2.9vw, 52px);
+    display: block;
+    margin: 0 auto;
+  }
 
   :root {
     --i-sun:   #f5a623;
@@ -410,9 +426,14 @@
   .ic .d3, .ic .f3 { animation-delay: 1s; }
   .ic .h2 { animation-delay: .9s; }
 
-  /* An ambient display runs all day; honour a viewer who has asked for calm. */
+  /* An ambient display runs all day; honour a viewer who has asked for calm.
+     Transitions count too — the favicon fade was still running under reduced
+     motion because this rule originally named only `animation`. It went
+     unnoticed because the fade is a quarter of a second and whether it shows
+     up depends on exactly when you look. */
   @media (prefers-reduced-motion: reduce) {
     .ic * { animation: none !important; }
+    .thumb img { transition: none !important; }
   }
 
   /* Rain chance escalates by contrast, then by the single accent — no second
@@ -781,12 +802,15 @@
   /* The whole row is the target, not just the words. */
   .card li:has(a.headline) { cursor: pointer; }
 
+  /* Beside the headline, not flushed to the far edge. Right-aligning it left
+     a 363px void between a short headline and its own timestamp — measured at
+     a 2000px viewport — and the eye had to cross the whole card to pair them. */
   .meta {
     color: var(--ink-muted);
     font-size: 14px;
     letter-spacing: -0.224px;
     flex-shrink: 0;
-    margin-left: auto;
+    margin-left: -4px;
     font-variant-numeric: tabular-nums;
   }
 
@@ -805,6 +829,11 @@
   }
 
   .stale { color: var(--accent); }
+
+  /* Two groups rather than four evenly spread items: what was updated on the
+     left, what you are looking at on the right. */
+  .foot #err { margin-right: auto; }
+  .foot { gap: 16px; }
 
   /* Below the breakpoint the cards stack, and three of them no longer fit a
      viewport. The no-scroll lock is right for the full-size ambient display
@@ -830,6 +859,15 @@
     /* The hero right-hand column has three rows of controls now; below this
        width it wraps rather than crushing the ZIP box. */
     .zipbar { flex-wrap: wrap; }
+  }
+
+  /* Past this width the columns keep growing but nothing inside them does, and
+     the content drifts apart — ten hourly cells 184px wide holding a 34px icon
+     and a two-digit number. Capping the measure by growing the side padding
+     keeps the proportions that work at 1440. The background image is unaffected:
+     it is fixed to the viewport, not to the content. */
+  @media (min-width: 1800px) {
+    :root { --pad-x: calc((100vw - 1700px) / 2); }
   }
 
   /* Height is what this layout actually runs out of, not width. A 1440x900
@@ -873,7 +911,6 @@
 <body>
 
   <div id="bg"></div>
-  <div id="bg-credit"></div>
 
   <header class="hero">
     <div class="hero-top">
@@ -935,6 +972,7 @@
     <div class="foot">
       <span id="gen">no data.js</span>
       <span id="err"></span>
+      <span id="bg-credit"></span>
       <span id="rev"></span>
     </div>
   </main>
@@ -957,7 +995,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 12;
+  var REV = 13;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1104,12 +1142,17 @@
   // sessionStorage: a display preference has to survive both the 5-minute
   // location.reload() and closing the tab. (The ZIP deliberately does not —
   // different question, different answer.)
-  var MODES = ["auto", "light", "dark", "photo"];
+  var MODES = ["auto", "light", "dark", "photo", "photodim"];
   var MODE_UI = {
-    auto:  { ic: "◑", label: "Auto"  },
-    light: { ic: "☀", label: "Light" },
-    dark:  { ic: "☾", label: "Dark"  },
-    photo: { ic: "✦", label: "NASA"  }
+    auto:     { ic: "◑", label: "Auto"  },
+    light:    { ic: "☀", label: "Light" },
+    dark:     { ic: "☾", label: "Dark"  },
+    photo:    { ic: "✦", label: "NASA"  },
+    // The transparent panels are tuned for the dark space pictures the APOD
+    // usually is. Perhaps one in ten is a bright full-frame nebula, and on
+    // those the text starts to struggle. This is the answer to that: one more
+    // press, a heavier scrim, the same layout.
+    photodim: { ic: "✦", label: "NASA dim" }
   };
 
   var mode = "auto";
@@ -1124,17 +1167,18 @@
 
   function applyMode() {
     var root = document.documentElement;
-    var dark = (mode === "dark") || (mode === "photo") ||
-               (mode === "auto" && autoNight);
+    var isPhoto = (mode === "photo" || mode === "photodim");
+    var dark = (mode === "dark") || isPhoto || (mode === "auto" && autoNight);
     root.classList.toggle("night", dark);
-    root.classList.toggle("photo", mode === "photo");
+    root.classList.toggle("photo", isPhoto);
+    root.classList.toggle("dim", mode === "photodim");
 
     var ui = MODE_UI[mode];
     $("mode-ic").textContent = ui.ic;
     $("mode-label").textContent = ui.label;
     $("mode-btn").setAttribute("aria-label", "Appearance: " + ui.label);
 
-    if (mode === "photo") loadApod();
+    if (isPhoto) loadApod();
   }
 
   $("mode-btn").addEventListener("click", function () {

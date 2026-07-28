@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 13 | 2026-07-28 | tag `rev13` | Band as underline, age beside headline, scaling icons, NASA dim step, footer consolidated, max content width |
 | 12 | 2026-07-28 | tag `rev12` | Photo-mode panels fully transparent — outline only; legibility moved to a page-wide scrim and a text halo |
 | 11 | 2026-07-28 | tag `rev11` | Play-window band, feels-like promoted, capped line length, adaptive scrim, transparent photo panels, wind spelled out, simplified day detail |
 | 10 | 2026-07-28 | tag `rev10` | Partly-cloudy sun given a full 8-ray corona — it had only three rays in one quadrant |
