@@ -28,7 +28,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
-| 8 | 2026-07-28 | _(this change)_ | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |
+| 8 | 2026-07-28 | `fb59fc8` | AM/PM clock, appearance toggle (auto/light/dark/NASA), animated icon for current conditions, news thumbnails, revision label; fixed news and calendar being cut off |
 | 7 | 2026-07-27 | `411894d` | Animated colour weather icons on the hourly strip |
 | 6 | 2026-07-27 | `9635b00` | Fixed five bugs found in review (timezone-correct night mode, responsive breakpoint, locale assumption, midnight rollover) |
 | 5 | 2026-07-27 | `cfe4524` | Payday and holiday calendar card |
