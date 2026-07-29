@@ -237,6 +237,11 @@
   .mode-btn:focus-visible { border-color: var(--accent); }
   .mode-btn .mode-ic { font-size: 13px; line-height: 1; }
 
+  /* Marked as leaving the page, because it does — this is the one control that
+     opens something else rather than changing what is on screen. */
+  .mode-btn.ext { text-decoration: none; }
+  .mode-btn .ext-ar { font-size: 11px; opacity: 0.7; margin-left: 1px; }
+
   .place {
     font-size: 14px;
     letter-spacing: -0.224px;
@@ -1045,6 +1050,8 @@
           <button class="mode-btn" id="mode-btn" type="button" aria-label="Change appearance">
             <span class="mode-ic" id="mode-ic">☀</span><span id="mode-label">Auto</span>
           </button>
+          <a class="mode-btn ext" id="traffic" target="_blank" rel="noopener noreferrer"
+             title="Open Google Maps traffic for this area">Traffic<span class="ext-ar">↗</span></a>
           <span class="place" id="place"></span>
           <input class="zip-input" id="zip-input" type="text" inputmode="numeric"
                  maxlength="5" placeholder="ZIP" aria-label="ZIP code for forecast">
@@ -1133,7 +1140,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 14;
+  var REV = 15;
   var REV_DATE = "2026-07-28";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -2314,6 +2321,16 @@
     if (!loc) return;
     $("place").textContent = loc.place || "";
     $("zip-input").value = loc.zip || "";
+
+    // Google forbids framing its map — X-Frame-Options: SAMEORIGIN, verified
+    // in a browser — and the one legacy endpoint that does frame carries no
+    // traffic, with the old layer=t flag now inert. So this hands off to the
+    // real thing instead of pretending to embed it. data=!5m1!1e1 is the
+    // traffic layer; the map opens centred on whichever ZIP is set.
+    if (loc.lat !== undefined && loc.lon !== undefined) {
+      $("traffic").href = "https://www.google.com/maps/@" +
+        loc.lat + "," + loc.lon + ",12z/data=!5m1!1e1";
+    }
   }
 
   // zippopotam gives the actual ZIP centroid; Open-Meteo's geocoder only knows

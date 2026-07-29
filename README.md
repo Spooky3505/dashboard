@@ -66,6 +66,27 @@ leak, no referrer restriction to maintain, and no key rotation if the repo is
 ever cloned. Addresses are geocoded once on save and only the coordinates are
 kept.
 
+### The Traffic button
+
+The **Traffic** pill opens Google Maps with its traffic layer on
+(`data=!5m1!1e1`), centred on whichever ZIP is set. It is a link, not an
+embed, and that is not a stylistic choice.
+
+Google **forbids framing its map**. The URL you would copy out of your browser
+with traffic switched on answers `X-Frame-Options: SAMEORIGIN`, and the browser
+refuses outright: *"Refused to display 'https://www.google.com/' in a frame
+because it set 'X-Frame-Options' to 'sameorigin'."* Refreshing the link does
+not help — it never renders once.
+
+There is one legacy endpoint that does frame, `maps.google.com/maps?...&output=embed`,
+and it renders a real map. But it carries **no traffic**, and the old `layer=t`
+flag is inert: tested against a control on an interstate at 14:41 on a Tuesday,
+both frames drew identical uncoloured roads.
+
+Worth recording: `curl` reported **404** on that endpoint while a real browser
+got a working map. That is the third time in this project that header
+inspection disagreed with a browser, after GDELT and the favicon service.
+
 ### Why TomTom rather than Google
 
 Google's Maps Embed API — the drop-in iframe — has **no traffic layer**. Its

@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 15 | 2026-07-28 | tag `rev15` | Traffic button — opens Google Maps' real traffic layer, centred on the current ZIP |
 | 14 | 2026-07-28 | tag `rev14` | Commute drive time with live traffic (TomTom); key and addresses stay in the browser |
 | 13 | 2026-07-28 | tag `rev13` | Band as underline, age beside headline, scaling icons, NASA dim step, footer consolidated, max content width |
 | 12 | 2026-07-28 | tag `rev12` | Photo-mode panels fully transparent — outline only; legibility moved to a page-wide scrim and a text halo |
