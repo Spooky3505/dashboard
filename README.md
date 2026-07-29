@@ -175,40 +175,59 @@ The image title and photographer are credited in the corner.
 
 The picture comes from **NASA's Astronomy Picture of the Day** —
 `api.nasa.gov/planetary/apod`, with the images themselves served from
-`apod.nasa.gov`. The page uses the shared `DEMO_KEY`, whose measured limit is
-10 requests an hour per IP.
+`apod.nasa.gov`.
+
+**The browser never calls NASA.** `refresh.sh` resolves the picture when it
+builds `data.js`, and every device reads the same answer out of that file. Each
+device used to fetch its own, which had three faults at once: the rate limit is
+measured **per IP**, so devices on one network competed for the same allowance;
+a device opening the page for the first time on a spent quota had nothing
+cached and got nothing at all; and two devices could honestly disagree about
+what the picture of the day was. Deciding it once, in the one place that is
+already shared, removes all three.
+
+Only the URL is stored, never the image file. APOD pictures are frequently the
+individual astrophotographer's own copyright rather than NASA's, so re-serving
+the bytes from this site would be automated redistribution of someone else's
+work with nothing checking the licence.
 
 Roughly one day in fifteen the APOD is a **video**, and there is no background
 in a video. NASA offers a YouTube poster frame, but those are typically title
-cards — burnt-in lettering that collides with the dashboard's own type — and
-the default frame is 480x360 besides. So on those days the page walks back to
-the most recent day that was actually a photograph, up to three days, and
-credits it to its own date rather than passing it off as today's.
+cards — burnt-in lettering that collides with the dashboard's own type. So on
+those days the build walks back to the most recent day that was actually a
+photograph, up to three days, and the credit line names that date rather than
+passing the picture off as today's.
 
-APOD is fetched **once a day** and cached by date. If a fetch fails — the
-shared `DEMO_KEY` is rate-limited to 10 requests an hour and is shared with
-everyone else using it — the page backs off for 30 minutes and keeps showing
-the cached picture. Without that, a page reloading every five minutes would
-retry 12 times an hour against a 10/hour limit and could never recover once
-the quota was gone. This is not an optimisation:
-the measured DEMO_KEY rate limit is 10 requests/hour, and the page reloads 12
-times an hour, so an uncached fetch would exhaust the quota inside the first
-hour and leave the background broken for the rest of the day. Roughly one APOD
-in fifteen is a video rather than an image; those have no usable background URL,
-so the poster frame is used, falling back to the previous day's picture.
+The build refreshes the picture **at most once a day, and at most once an
+hour**. Both limits matter. The workflow runs every 15 minutes — 96 times a day
+— so an unconditional fetch would be 96 calls against `DEMO_KEY`'s measured
+limit of 10 an hour. But keying only on the date is not enough either: APOD
+rolls over at midnight US/Eastern while the actual publication lags behind it,
+so every run through that gap would refetch and spend most of the quota before
+the new picture even existed.
+
+If a fetch fails, the previous picture stays and a line appears in the footer's
+error list. Nothing retries until the next hour, so a dead quota cannot be kept
+dead by its own retries.
+
+The key is read from the `NASA_API_KEY` environment variable and falls back to
+the shared `DEMO_KEY`. If misses become common, adding a personal key (free,
+1,000 requests an hour) is a repository secret plus one line in the workflow —
+no code change.
 
 ### Why it may look different on another device
 
-Two things are per-device, both deliberately:
+**The picture no longer differs** — every device gets the same one from
+`data.js`. What still does not travel is **the mode itself**: your appearance
+choice lives in that browser's `localStorage`, so a phone or a second laptop
+opens in Auto, and NASA mode is off there until you press the toggle on that
+device.
 
-**The mode itself does not travel.** Your appearance choice lives in that
-browser's `localStorage`, so a phone or a second laptop opens in Auto and
-NASA mode is simply off there until you press the toggle on that device.
-
-**The picture is cached per device too**, and the shared `DEMO_KEY` is rate
-limited **per IP address** — several devices on the same network draw from the
-same allowance. A device opening the dashboard for the first time while the
-quota is spent has no cached picture to fall back on.
+If `data.js` ever stops updating — GitHub disables scheduled workflows after 60
+days of repository inactivity — the picture stops changing rather than going
+missing, and the credit line still names the day it came from. That is the
+deliberate trade: a visibly stale picture everywhere beats every device falling
+back to fetching its own and diverging again at exactly the wrong moment.
 
 That case used to render as a black screen, because photo mode strips the fill
 off every panel and there was nothing behind them. It now falls back to

@@ -1134,19 +1134,12 @@
   var STALE_MS = 45 * 60 * 1000;
   var STORE_KEY = "dash.location";
   var MODE_KEY = "dash.mode";
-  var APOD_KEY = "dash.apod";
-  var APOD_FAIL_KEY = "dash.apodfail";
-  // After a failed fetch, wait this long before trying again. The page reloads
-  // every five minutes, so an uncooled retry is 12 attempts an hour against
-  // DEMO_KEY's measured limit of 10 — once the quota is gone it could never
-  // recover, because the retries themselves keep it exhausted.
-  var APOD_COOLDOWN_MS = 30 * 60 * 1000;
 
   // Page revision. Bumped by hand whenever the layout or behaviour changes —
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 18;
+  var REV = 19;
   var REV_DATE = "2026-07-29";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1357,18 +1350,13 @@
   });
 
   // ---- NASA Astronomy Picture of the Day ----
-  // Cached by date in localStorage and fetched at most once a day. This is not
-  // an optimisation: the page reloads itself every 5 minutes, and the DEMO_KEY
-  // rate limit measured on the live endpoint was 10/hour — an uncached fetch
-  // would exhaust the quota inside the first hour and the background would
-  // then fail for the rest of the day.
-  function apodCached() {
-    try {
-      var raw = localStorage.getItem(APOD_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
-
+  // Resolved by refresh.sh at build time and delivered inside data.js, so the
+  // browser never calls NASA at all. It used to: every device fetched its own
+  // picture against a rate limit that is measured per IP, so devices sharing a
+  // network competed with each other, a device opening the page on a spent
+  // quota got nothing, and two devices could honestly disagree about what the
+  // picture of the day was. One answer, decided once, is simply the right
+  // shape for a thing that is the same for everybody.
   function showApod(a) {
     if (!a || !a.img) return;
     $("bg").style.backgroundImage = 'url("' + a.img + '")';
@@ -1392,112 +1380,13 @@
       a.title + (a.credit ? " · " + a.credit : "") + tail;
   }
 
-  // On the roughly one day in fifteen that the picture of the day is a video,
-  // NASA hands back a YouTube poster frame — and the one it gives is 480x360,
-  // which stretched across a 1440px display looks exactly as bad as it sounds.
-  // YouTube also keeps a 1280x720 frame at maxresdefault.jpg, but only for
-  // videos uploaded in HD, so it has to be probed rather than assumed. The
-  // width check catches the grey 120x90 placeholder YouTube sometimes serves
-  // with a 200 instead of a 404.
-  function bestThumb(url) {
-    var m = /^https?:\/\/img\.youtube\.com\/vi\/([^/]+)\//.exec(url);
-    if (!m) return Promise.resolve(url);
-    var hi = "https://img.youtube.com/vi/" + m[1] + "/maxresdefault.jpg";
-    return new Promise(function (resolve) {
-      var probe = new Image();
-      probe.onload  = function () { resolve(probe.naturalWidth >= 640 ? hi : url); };
-      probe.onerror = function () { resolve(url); };
-      probe.src = hi;
-    });
-  }
-
-  var apodPending = false;
-
-  function apodUrl(dateStr) {
-    return "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true"
-         + (dateStr ? "&date=" + dateStr : "");
-  }
-
-  function apodDayBefore(key, n) {
-    var p = key.split("-");
-    var t = Date.UTC(+p[0], +p[1] - 1, +p[2]) - n * DAY_MS;
-    return ymd(t);
-  }
-
+  // Deliberately no fallback to fetching it here when data.js is stale. A
+  // fallback would fire on every device at the same moment — which is exactly
+  // the divergence and the contention that moving this to the build removed.
+  // If data.js stops updating the picture stops changing, and the credit line
+  // says which day it is from, which is a visible and honest failure.
   function loadApod() {
-    var todayKey = todayParts().key;
-    var c = apodCached();
-    if (c && c.day === todayKey) { showApod(c); return; }
-    if (apodPending) return;
-
-    var failedAt = 0;
-    try { failedAt = +(localStorage.getItem(APOD_FAIL_KEY) || 0); } catch (e) { /* not fatal */ }
-    if (failedAt && Date.now() - failedAt < APOD_COOLDOWN_MS) {
-      if (c) showApod(c);       // yesterday's picture beats hammering a dead quota
-      return;
-    }
-
-    apodPending = true;
-
-    // Roughly one day in fifteen the picture of the day is a video, and there
-    // is no background in it. NASA does return a YouTube poster frame with
-    // thumbs=true, but those are usually title cards — burnt-in lettering that
-    // collides with the dashboard's own type — and the default frame is
-    // 480x360 besides. Walking back to the most recent day that was actually a
-    // photograph gives a real astrophoto instead, credited to its own day.
-    // Costs one extra call, on one day in fifteen, once.
-    function attempt(dateStr, back) {
-      return fetch(apodUrl(dateStr))
-        .then(function (r) {
-          // An HTTP error still returns parseable JSON — a 429 rate-limit body
-          // parses fine and simply has no media_type, which the walk-back below
-          // then reads as "not a photograph" and retries three more times.
-          // Four rate-limited calls where one was already too many. Fail loudly
-          // here so the catch fires once and the cached picture stays up.
-          if (!r.ok) throw new Error("http " + r.status);
-          return r.json();
-        })
-        .then(function (d) {
-          if (d.media_type === "image" && (d.url || d.hdurl)) {
-            // `url` (NASA's web-sized copy) rather than `hdurl`, on
-            // measurement: an hdurl of 7.10 MB against 0.16 MB — 45x the bytes
-            // for a 5815px image on a 1440px display, re-decoded on every
-            // reload, behind a scrim. Swap them for maximum sharpness.
-            return { img: d.url || d.hdurl, title: d.title || "",
-                     credit: d.copyright || "", when: d.date || dateStr };
-          }
-          if (back > 0) return attempt(apodDayBefore(dateStr || todayKey, 1), back - 1);
-          // Nothing photographic in the last few days — take the poster frame
-          // at the best resolution YouTube has rather than showing nothing.
-          if (d.thumbnail_url) {
-            return bestThumb(d.thumbnail_url).then(function (t) {
-              return { img: t, title: d.title || "", credit: d.copyright || "",
-                       when: d.date || dateStr };
-            });
-          }
-          return null;
-        });
-    }
-
-    attempt(null, 3)
-      .then(function (found) {
-        if (!found) { if (c) showApod(c); return; }
-        var rec = { day: todayKey, img: found.img, title: found.title,
-                    credit: found.credit, when: found.when };
-        try {
-          localStorage.setItem(APOD_KEY, JSON.stringify(rec));
-          localStorage.removeItem(APOD_FAIL_KEY);
-        } catch (e) { /* not fatal */ }
-        showApod(rec);
-      })
-      .catch(function () {
-        // Offline or rate-limited: a stale picture beats a black rectangle, and
-        // the cooldown stops the next reload from spending another request on
-        // a quota that is already gone.
-        try { localStorage.setItem(APOD_FAIL_KEY, String(Date.now())); } catch (e) { /* not fatal */ }
-        if (c) showApod(c);
-      })
-      .then(function () { apodPending = false; });
+    showApod(DATA && DATA.apod);
   }
 
   // Open-Meteo returns sunrise/sunset as naive strings in the *location's*
