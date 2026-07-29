@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 16 | 2026-07-29 | tag `rev16` | Video days fall back to the most recent actual photograph instead of a YouTube title card |
 | 15 | 2026-07-28 | tag `rev15` | Traffic button — opens Google Maps' real traffic layer, centred on the current ZIP |
 | 14 | 2026-07-28 | tag `rev14` | Commute drive time with live traffic (TomTom); key and addresses stay in the browser |
 | 13 | 2026-07-28 | tag `rev13` | Band as underline, age beside headline, scaling icons, NASA dim step, footer consolidated, max content width |

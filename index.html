@@ -1140,8 +1140,8 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 15;
-  var REV_DATE = "2026-07-28";
+  var REV = 16;
+  var REV_DATE = "2026-07-29";
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -1348,11 +1348,49 @@
   function showApod(a) {
     if (!a || !a.img) return;
     $("bg").style.backgroundImage = 'url("' + a.img + '")';
+
+    // When the picture is not actually today's — because today's was a video
+    // and this is the most recent photograph before it — the credit says so.
+    // Labelling a 27 July image as the picture of the day for the 29th would
+    // be a small lie told every fifteenth day.
+    var tail = " · NASA APOD";
+    if (a.when && a.when !== a.day) tail += " " + a.when;
+
     $("bg-credit").textContent =
-      a.title + (a.credit ? " · " + a.credit : "") + " · NASA APOD";
+      a.title + (a.credit ? " · " + a.credit : "") + tail;
+  }
+
+  // On the roughly one day in fifteen that the picture of the day is a video,
+  // NASA hands back a YouTube poster frame — and the one it gives is 480x360,
+  // which stretched across a 1440px display looks exactly as bad as it sounds.
+  // YouTube also keeps a 1280x720 frame at maxresdefault.jpg, but only for
+  // videos uploaded in HD, so it has to be probed rather than assumed. The
+  // width check catches the grey 120x90 placeholder YouTube sometimes serves
+  // with a 200 instead of a 404.
+  function bestThumb(url) {
+    var m = /^https?:\/\/img\.youtube\.com\/vi\/([^/]+)\//.exec(url);
+    if (!m) return Promise.resolve(url);
+    var hi = "https://img.youtube.com/vi/" + m[1] + "/maxresdefault.jpg";
+    return new Promise(function (resolve) {
+      var probe = new Image();
+      probe.onload  = function () { resolve(probe.naturalWidth >= 640 ? hi : url); };
+      probe.onerror = function () { resolve(url); };
+      probe.src = hi;
+    });
   }
 
   var apodPending = false;
+
+  function apodUrl(dateStr) {
+    return "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true"
+         + (dateStr ? "&date=" + dateStr : "");
+  }
+
+  function apodDayBefore(key, n) {
+    var p = key.split("-");
+    var t = Date.UTC(+p[0], +p[1] - 1, +p[2]) - n * DAY_MS;
+    return ymd(t);
+  }
 
   function loadApod() {
     var todayKey = todayParts().key;
@@ -1361,26 +1399,43 @@
     if (apodPending) return;
     apodPending = true;
 
-    fetch("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&thumbs=true")
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        // Roughly one APOD in fifteen is a video: there is no hdurl and `url`
-        // is a player embed, which cannot be used as a background. NASA does
-        // return a poster frame when thumbs=true, so use that; if even that is
-        // missing, keep whatever image was cached from a previous day rather
-        // than dropping to a black screen.
-        // `url` (NASA's web-sized copy) rather than `hdurl`, on measurement:
-        // today's hdurl is 7.10 MB against 0.16 MB — 45x the bytes for a
-        // 5815px image on a 1440px display, re-decoded on every 5-minute
-        // reload. It sits behind a darkening scrim and three blurred cards,
-        // so the extra resolution buys almost nothing visible. Swap the two
-        // here if you want maximum sharpness over a lighter page.
-        var img = null;
-        if (d.media_type === "image") img = d.url || d.hdurl;
-        else if (d.thumbnail_url) img = d.thumbnail_url;
-        if (!img) { if (c) showApod(c); return; }
+    // Roughly one day in fifteen the picture of the day is a video, and there
+    // is no background in it. NASA does return a YouTube poster frame with
+    // thumbs=true, but those are usually title cards — burnt-in lettering that
+    // collides with the dashboard's own type — and the default frame is
+    // 480x360 besides. Walking back to the most recent day that was actually a
+    // photograph gives a real astrophoto instead, credited to its own day.
+    // Costs one extra call, on one day in fifteen, once.
+    function attempt(dateStr, back) {
+      return fetch(apodUrl(dateStr))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.media_type === "image" && (d.url || d.hdurl)) {
+            // `url` (NASA's web-sized copy) rather than `hdurl`, on
+            // measurement: an hdurl of 7.10 MB against 0.16 MB — 45x the bytes
+            // for a 5815px image on a 1440px display, re-decoded on every
+            // reload, behind a scrim. Swap them for maximum sharpness.
+            return { img: d.url || d.hdurl, title: d.title || "",
+                     credit: d.copyright || "", when: d.date || dateStr };
+          }
+          if (back > 0) return attempt(apodDayBefore(dateStr || todayKey, 1), back - 1);
+          // Nothing photographic in the last few days — take the poster frame
+          // at the best resolution YouTube has rather than showing nothing.
+          if (d.thumbnail_url) {
+            return bestThumb(d.thumbnail_url).then(function (t) {
+              return { img: t, title: d.title || "", credit: d.copyright || "",
+                       when: d.date || dateStr };
+            });
+          }
+          return null;
+        });
+    }
 
-        var rec = { day: todayKey, img: img, title: d.title || "", credit: d.copyright || "" };
+    attempt(null, 3)
+      .then(function (found) {
+        if (!found) { if (c) showApod(c); return; }
+        var rec = { day: todayKey, img: found.img, title: found.title,
+                    credit: found.credit, when: found.when };
         try { localStorage.setItem(APOD_KEY, JSON.stringify(rec)); } catch (e) { /* not fatal */ }
         showApod(rec);
       })

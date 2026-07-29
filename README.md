@@ -173,6 +173,18 @@ unreadable — so the panels go translucent with a blur, and a gradient scrim si
 between image and content, weighted to the top and bottom where the text is.
 The image title and photographer are credited in the corner.
 
+The picture comes from **NASA's Astronomy Picture of the Day** —
+`api.nasa.gov/planetary/apod`, with the images themselves served from
+`apod.nasa.gov`. The page uses the shared `DEMO_KEY`, whose measured limit is
+10 requests an hour per IP.
+
+Roughly one day in fifteen the APOD is a **video**, and there is no background
+in a video. NASA offers a YouTube poster frame, but those are typically title
+cards — burnt-in lettering that collides with the dashboard's own type — and
+the default frame is 480x360 besides. So on those days the page walks back to
+the most recent day that was actually a photograph, up to three days, and
+credits it to its own date rather than passing it off as today's.
+
 APOD is fetched **once a day** and cached by date. This is not an optimisation:
 the measured DEMO_KEY rate limit is 10 requests/hour, and the page reloads 12
 times an hour, so an uncached fetch would exhaust the quota inside the first
