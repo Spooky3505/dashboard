@@ -185,7 +185,12 @@ the default frame is 480x360 besides. So on those days the page walks back to
 the most recent day that was actually a photograph, up to three days, and
 credits it to its own date rather than passing it off as today's.
 
-APOD is fetched **once a day** and cached by date. This is not an optimisation:
+APOD is fetched **once a day** and cached by date. If a fetch fails — the
+shared `DEMO_KEY` is rate-limited to 10 requests an hour and is shared with
+everyone else using it — the page backs off for 30 minutes and keeps showing
+the cached picture. Without that, a page reloading every five minutes would
+retry 12 times an hour against a 10/hour limit and could never recover once
+the quota was gone. This is not an optimisation:
 the measured DEMO_KEY rate limit is 10 requests/hour, and the page reloads 12
 times an hour, so an uncached fetch would exhaust the quota inside the first
 hour and leave the background broken for the rest of the day. Roughly one APOD

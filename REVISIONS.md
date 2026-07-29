@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 17 | 2026-07-29 | tag `rev17` | APOD: check HTTP status before parsing, and back off after a failure instead of retrying every 5 minutes |
 | 16 | 2026-07-29 | tag `rev16` | Video days fall back to the most recent actual photograph instead of a YouTube title card |
 | 15 | 2026-07-28 | tag `rev15` | Traffic button — opens Google Maps' real traffic layer, centred on the current ZIP |
 | 14 | 2026-07-28 | tag `rev14` | Commute drive time with live traffic (TomTom); key and addresses stay in the browser |
