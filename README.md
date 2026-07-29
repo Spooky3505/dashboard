@@ -197,6 +197,24 @@ hour and leave the background broken for the rest of the day. Roughly one APOD
 in fifteen is a video rather than an image; those have no usable background URL,
 so the poster frame is used, falling back to the previous day's picture.
 
+### Why it may look different on another device
+
+Two things are per-device, both deliberately:
+
+**The mode itself does not travel.** Your appearance choice lives in that
+browser's `localStorage`, so a phone or a second laptop opens in Auto and
+NASA mode is simply off there until you press the toggle on that device.
+
+**The picture is cached per device too**, and the shared `DEMO_KEY` is rate
+limited **per IP address** — several devices on the same network draw from the
+same allowance. A device opening the dashboard for the first time while the
+quota is spent has no cached picture to fall back on.
+
+That case used to render as a black screen, because photo mode strips the fill
+off every panel and there was nothing behind them. It now falls back to
+ordinary dark mode until a picture is actually available, with the footer
+saying so, and the transparency applies only once one loads.
+
 ## News thumbnails
 
 Each headline carries a small tile. It is the **publisher's favicon**, not the

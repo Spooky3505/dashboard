@@ -172,7 +172,7 @@
     display: none;
   }
 
-  html.photo #bg-credit { display: block; }
+  html.photo #bg-credit, html.wantphoto #bg-credit { display: block; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1146,7 +1146,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 17;
+  var REV = 18;
   var REV_DATE = "2026-07-29";
 
   var $ = function (id) { return document.getElementById(id); };
@@ -1312,6 +1312,10 @@
     if (MODES.indexOf(savedMode) >= 0) mode = savedMode;
   } catch (e) { /* storage throws rather than returning null on some origins */ }
 
+  // Declared here, above applyMode, because applyMode reads it: var hoisting
+  // would make it work anywhere, but not obviously.
+  var apodReady = false;   // a picture is loaded, so photo mode may apply
+
   var autoNight = false;   // last sunrise/sunset verdict, remembered so that
                            // switching back to auto doesn't wait for the next
                            // weather call to take effect
@@ -1321,8 +1325,22 @@
     var isPhoto = (mode === "photo" || mode === "photodim");
     var dark = (mode === "dark") || isPhoto || (mode === "auto" && autoNight);
     root.classList.toggle("night", dark);
-    root.classList.toggle("photo", isPhoto);
-    root.classList.toggle("dim", mode === "photodim");
+
+    // .photo strips the fill off every panel, because the picture is meant to
+    // show through them. With no picture that leaves transparent cards over a
+    // black rectangle, which reads as broken rather than as dark mode — and a
+    // device opening this for the first time on an exhausted quota gets
+    // exactly that. So the transparency waits until an image is actually up;
+    // until then the page is ordinary dark mode.
+    root.classList.toggle("photo", isPhoto && apodReady);
+    root.classList.toggle("dim", mode === "photodim" && apodReady);
+
+    // Selected-but-not-yet-loaded still shows the credit line, so the state is
+    // legible instead of looking like the toggle did nothing.
+    root.classList.toggle("wantphoto", isPhoto);
+    if (isPhoto && !apodReady) {
+      $("bg-credit").textContent = "NASA picture unavailable right now";
+    }
 
     var ui = MODE_UI[mode];
     $("mode-ic").textContent = ui.ic;
@@ -1354,6 +1372,14 @@
   function showApod(a) {
     if (!a || !a.img) return;
     $("bg").style.backgroundImage = 'url("' + a.img + '")';
+
+    // Now that a picture exists, photo mode may take effect. Toggled directly
+    // rather than by calling applyMode, which would re-enter loadApod.
+    apodReady = true;
+    var root = document.documentElement;
+    var isPhoto = (mode === "photo" || mode === "photodim");
+    root.classList.toggle("photo", isPhoto);
+    root.classList.toggle("dim", mode === "photodim");
 
     // When the picture is not actually today's — because today's was a video
     // and this is the most recent photograph before it — the credit says so.
