@@ -31,7 +31,8 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
-| 19 | 2026-07-29 | **not yet pushed** | The picture of the day is chosen once by the build, so every device shows the same one; the browser no longer calls NASA at all |
+| 20 | 2026-07-29 | **not yet pushed** | Commute drive time removed entirely; the Traffic button now opens a fixed view instead of following the ZIP |
+| 19 | 2026-07-29 | tag `rev19` | The picture of the day is chosen once by the build, so every device shows the same one; the browser no longer calls NASA at all |
 | 18 | 2026-07-29 | tag `rev18` | NASA mode falls back to dark mode when no picture is available, instead of a black screen |
 | 17 | 2026-07-29 | tag `rev17` | APOD: check HTTP status before parsing, and back off after a failure instead of retrying every 5 minutes |
 | 16 | 2026-07-29 | tag `rev16` | Video days fall back to the most recent actual photograph instead of a YouTube title card |
@@ -51,17 +52,27 @@ and open that file.
 | 2 | 2026-07-27 | `c473623` | Afternoon rain strip with a plain-English verdict |
 | 1 | 2026-07-27 | earlier | First published dashboard — clock, weather, news |
 
-**Rev 19 is written and tested but not published.** It changes the live site
+**Rev 20 is written and tested but not published.** It changes the live site
 for everyone, so it is left for you to send:
 
 ```bash
 cd site
-git add -A && git commit -m "Choose the picture of the day once, at build time (rev 19)"
-git tag rev19 && git push && git push --tags
+git pull --rebase
+git add index.html README.md REVISIONS.md .gitignore
+git commit -m "Remove the commute; pin the Traffic view (rev 20)"
+git tag rev20 && git push && git push --tags
 ```
 
-The push also triggers the refresh workflow, which is the first real test of the
-NASA call from GitHub's own addresses — see the plan's "Not verified" note.
+Named files rather than `git add -A`, deliberately. `data.js` is tracked and the
+refresh workflow owns it; `-A` would stage whatever happens to be sitting there
+locally, which is usually an older or failed run, and push it over the good
+record the workflow produced.
+
+`git pull --rebase` first: the refresh workflow commits `data.js` every 15
+minutes, so the local branch is almost always behind by the time you push. If a
+tag has already been created locally, delete it before rebasing and re-create it
+after — a rebase rewrites the commit and would otherwise strand the tag off the
+branch's history.
 
 Revisions 1–7 are numbered here in retrospect; only rev 8 onward actually
 prints its number on the page, so anything older than 8 shows no rev label at

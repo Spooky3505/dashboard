@@ -51,26 +51,26 @@ build-time feed from `data.js` stays on screen and the card heading drops its
 place name — so the card is never blank, but the news is not local at that
 moment.
 
-## Commute
-
-Drive time with live traffic, beside the rain verdict: **"Atlanta 31 min +8"**.
-The `+8` is minutes over free-flow and is the only part that colours — amber
-past 5 minutes, accent past 12. At free flow there is no badge at all, because
-a badge that is present every morning stops being read.
-
-Click it to set up. **Your API key and both addresses are stored in this
-browser's `localStorage` and nowhere else.** They are deliberately not in the
-repo: this dashboard is published, and a home address committed to a public
-page cannot be taken back. It also means the key never enters git — nothing to
-leak, no referrer restriction to maintain, and no key rotation if the repo is
-ever cloned. Addresses are geocoded once on save and only the coordinates are
-kept.
-
-### The Traffic button
+## Traffic
 
 The **Traffic** pill opens Google Maps with its traffic layer on
-(`data=!5m1!1e1`), centred on whichever ZIP is set. It is a link, not an
-embed, and that is not a stylistic choice.
+(`data=!5m1!1e1`), at a fixed view. It is a link, not an embed, and that is not
+a stylistic choice.
+
+The view is pinned rather than following the ZIP box. The ZIP steers the
+forecast, the news and the clock — but the road you actually watch does not
+move when you point the forecast somewhere else, so the two are deliberately
+decoupled. Changing it means editing the `href` on the `#traffic` anchor in
+`index.html`: paste a Google Maps URL with traffic switched on and keep the
+`data=!5m1!1e1` part.
+
+> **Removed in rev 20:** the commute drive-time readout (TomTom) that used to
+> sit beside the rain verdict, along with its setup panel and the API key and
+> addresses it kept in `localStorage`. Nothing about it reached the repo, so
+> there is nothing to clean up; a browser that used it still holds a
+> `dash.commute` key, which is now simply ignored. The reasoning that led to
+> TomTom is kept below, because the constraint that forced it still applies to
+> anything similar.
 
 Google **forbids framing its map**. The URL you would copy out of your browser
 with traffic switched on answers `X-Frame-Options: SAMEORIGIN`, and the browser
@@ -87,7 +87,7 @@ Worth recording: `curl` reported **404** on that endpoint while a real browser
 got a working map. That is the third time in this project that header
 inspection disagreed with a browser, after GDELT and the favicon service.
 
-### Why TomTom rather than Google
+### Why TomTom rather than Google (historical — the commute is gone as of rev 20)
 
 Google's Maps Embed API — the drop-in iframe — has **no traffic layer**. Its
 five modes take `center`, `zoom`, `maptype`, `language` and `region`, and that
@@ -109,9 +109,10 @@ lesson: both the routing and geocoding endpoints return a normal HTTP 401 for a
 bad key rather than being blocked by CORS, which is what proves they are usable
 from the page.
 
-The setup panel is an overlay, not an inline block. Opening it inline added its
-height to the hero and pushed the calendar off the bottom of the screen — the
-third time this layout has been broken that way.
+The setup panel was an overlay, not an inline block. Opening it inline added
+its height to the hero and pushed the calendar off the bottom of the screen —
+the third time this layout has been broken that way. Worth keeping in mind for
+anything else added to the hero band.
 
 ## Calendar
 
