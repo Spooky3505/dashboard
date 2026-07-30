@@ -31,6 +31,7 @@ and open that file.
 
 | Rev | Date | Commit | What changed |
 |-----|------|--------|--------------|
+| 21 | 2026-07-29 | **not yet pushed** | Traffic button opens a fixed route with traffic on, rather than a map view |
 | 20 | 2026-07-29 | tag `rev20` | Commute drive time removed entirely; the Traffic button now opens a fixed view instead of following the ZIP |
 | 19 | 2026-07-29 | tag `rev19` | The picture of the day is chosen once by the build, so every device shows the same one; the browser no longer calls NASA at all |
 | 18 | 2026-07-29 | tag `rev18` | NASA mode falls back to dark mode when no picture is available, instead of a black screen |

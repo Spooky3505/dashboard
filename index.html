@@ -940,12 +940,23 @@
                verified in a browser) and the one legacy endpoint that does
                frame carries no traffic, with the old layer=t flag now inert.
                So this hands off to the real thing rather than pretending to
-               embed it. data=!5m1!1e1 is the traffic layer. The view is fixed
-               rather than following the ZIP box — this is the one commute that
-               is actually watched, and it should not move when the forecast is
-               pointed somewhere else. -->
+               embed it.
+
+               A directions URL, not a map view: the trailing !5m1!1e1 turns the
+               traffic layer on and !3e0 selects driving, so it opens with the
+               route already drawn and coloured. Fixed rather than following the
+               ZIP box, because the ZIP steers the forecast and this is the one
+               route actually watched — it should not move when the forecast is
+               pointed somewhere else.
+
+               To change it: open Google Maps, get directions with the traffic
+               layer switched on, and paste the whole URL here. Keep !5m1!1e1 —
+               without it the route draws with no traffic colouring. The
+               ?entry=ttu&g_ep=... tail is Google's own client build token and
+               can be dropped. Note this file is published publicly, so both
+               endpoints are visible to anyone who views source. -->
           <a class="mode-btn ext" id="traffic" target="_blank" rel="noopener noreferrer"
-             href="https://www.google.com/maps/@33.9572481,-84.3874136,12z/data=!5m1!1e1?entry=ttu&amp;g_ep=EgoyMDI2MDcyNi4wIKXMDSoASAFQAw%3D%3D"
+             href="https://www.google.com/maps/dir/Walmart+Supercenter,+2795+Chastain+Meadows+Pkwy+NW,+Marietta,+GA+30066/Gadhpurdham+Shree+Swaminarayan+Hindu+Mandir,+1080+Beaver+Ruin+Rd,+Norcross,+GA+30093/@33.906943,-84.5149445,11z/data=!3m1!4b1!4m14!4m13!1m5!1m1!1s0x88f514da8805d301:0x12171978a8720513!2m2!1d-84.5571065!2d34.019294!1m5!1m1!1s0x88f5a483e15171a7:0x25ed2e0053533b!2m2!1d-84.1380271!2d33.9195705!3e0!5m1!1e1?entry=ttu&amp;g_ep=EgoyMDI2MDcyNy4wIKXMDSoASAFQAw%3D%3D"
              title="Open Google Maps with the live traffic layer">Traffic<span class="ext-ar">↗</span></a>
           <span class="place" id="place"></span>
           <input class="zip-input" id="zip-input" type="text" inputmode="numeric"
@@ -1012,7 +1023,7 @@
   // deliberately NOT derived from the git SHA, because the refresh workflow
   // commits data.js every 15 minutes and the number would churn without
   // anything visible having changed. REVISIONS.md maps each one to its commit.
-  var REV = 20;
+  var REV = 21;
   var REV_DATE = "2026-07-29";
 
   var $ = function (id) { return document.getElementById(id); };

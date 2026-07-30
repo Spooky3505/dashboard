@@ -53,16 +53,27 @@ moment.
 
 ## Traffic
 
-The **Traffic** pill opens Google Maps with its traffic layer on
-(`data=!5m1!1e1`), at a fixed view. It is a link, not an embed, and that is not
-a stylistic choice.
+The **Traffic** pill opens Google Maps with a **fixed route** and the traffic
+layer already on, so it lands on the drive you actually care about rather than a
+general map. It is a link, not an embed, and that is not a stylistic choice.
 
-The view is pinned rather than following the ZIP box. The ZIP steers the
-forecast, the news and the clock — but the road you actually watch does not
-move when you point the forecast somewhere else, so the two are deliberately
-decoupled. Changing it means editing the `href` on the `#traffic` anchor in
-`index.html`: paste a Google Maps URL with traffic switched on and keep the
-`data=!5m1!1e1` part.
+Two parts of the URL do the work: `!3e0` selects driving, and the trailing
+`!5m1!1e1` switches the traffic layer on. Without the latter the route draws
+with no colouring, which looks correct and tells you nothing.
+
+It is pinned rather than following the ZIP box. The ZIP steers the forecast, the
+news and the clock — but the route you watch should not move when you point the
+forecast somewhere else, so the two are deliberately decoupled.
+
+To change it: open Google Maps, get directions with traffic switched on, and
+paste the whole URL over the `href` on the `#traffic` anchor in `index.html`.
+The `?entry=ttu&g_ep=…` tail is Google's own client build token and can be
+dropped.
+
+> **This file is published.** Both endpoints of the route are in the page source
+> and visible to anyone who opens it. That is fine for public places; it is worth
+> a thought before putting a home address there. The commute feature that was
+> removed in rev 20 kept its addresses in `localStorage` for exactly this reason.
 
 > **Removed in rev 20:** the commute drive-time readout (TomTom) that used to
 > sit beside the rain verdict, along with its setup panel and the API key and
